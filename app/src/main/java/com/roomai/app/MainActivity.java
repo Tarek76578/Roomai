@@ -29,7 +29,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+
+        try {
+            setContentView(R.layout.activity_main);
 
         Button uploadButton = findViewById(R.id.uploadButton);
         Button designButton = findViewById(R.id.designButton);
@@ -101,6 +103,14 @@ public class MainActivity extends Activity {
                     Toast.LENGTH_SHORT
             ).show();
         });
+
+        } catch (Exception e) {
+            Toast.makeText(
+                    this,
+                    "RoomAI Error: " + e.getClass().getSimpleName() + " - " + e.getMessage(),
+                    Toast.LENGTH_LONG
+            ).show();
+        }
     }
 
     private void selectRoom(String room) {
