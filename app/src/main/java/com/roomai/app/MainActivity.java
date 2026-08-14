@@ -12,6 +12,7 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.Toast;
 
@@ -73,13 +74,78 @@ public class MainActivity extends Activity {
 
         uploadButton.setOnClickListener(v -> showImageOptions());
 
+        LinearLayout modernCard = findViewById(R.id.modernCard);
+        LinearLayout luxuryCard = findViewById(R.id.luxuryCard);
+        LinearLayout scandiCard = findViewById(R.id.scandiCard);
+        LinearLayout bedroomCard = findViewById(R.id.bedroomCard);
+        LinearLayout kitchenCard = findViewById(R.id.kitchenCard);
+        LinearLayout livingCard = findViewById(R.id.livingCard);
+
+        modernCard.setOnClickListener(v -> selectStyle("Modern"));
+        luxuryCard.setOnClickListener(v -> selectStyle("Luxury"));
+        scandiCard.setOnClickListener(v -> selectStyle("Minimalist"));
+
+        bedroomCard.setOnClickListener(v -> selectRoom("Bedroom"));
+        kitchenCard.setOnClickListener(v -> selectRoom("Kitchen"));
+        livingCard.setOnClickListener(v -> selectRoom("Living Room"));
+
         designButton.setOnClickListener(v -> {
+            String room = roomTypeSpinner.getSelectedItem().toString();
+            String style = styleSpinner.getSelectedItem().toString();
+
             Toast.makeText(
                     this,
-                    "AI design is coming soon!",
+                    "Ready: " + room + " • " + style,
                     Toast.LENGTH_SHORT
             ).show();
         });
+    }
+
+    private void selectRoom(String room) {
+        String[] rooms = {
+                "Living Room",
+                "Bedroom",
+                "Kitchen",
+                "Bathroom",
+                "Office",
+                "Dining Room"
+        };
+
+        for (int i = 0; i < rooms.length; i++) {
+            if (rooms[i].equals(room)) {
+                roomTypeSpinner.setSelection(i);
+                Toast.makeText(
+                        this,
+                        room + " selected",
+                        Toast.LENGTH_SHORT
+                ).show();
+                return;
+            }
+        }
+    }
+
+    private void selectStyle(String style) {
+        String[] styles = {
+                "Modern",
+                "Minimalist",
+                "Scandinavian",
+                "Luxury",
+                "Industrial",
+                "Bohemian",
+                "Classic"
+        };
+
+        for (int i = 0; i < styles.length; i++) {
+            if (styles[i].equals(style)) {
+                styleSpinner.setSelection(i);
+                Toast.makeText(
+                        this,
+                        style + " selected",
+                        Toast.LENGTH_SHORT
+                ).show();
+                return;
+            }
+        }
     }
 
     private void showImageOptions() {
