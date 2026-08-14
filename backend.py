@@ -100,6 +100,7 @@ def generate():
             }]
         }
 
+        print("ROOMAI STEP 1: requesting upload URL")
         response = api_request(
             API + "/v1/files/upload-urls",
             "POST",
@@ -131,6 +132,7 @@ def generate():
             "webp": "image/webp"
         }.get(extension, "image/jpeg")
 
+        print("ROOMAI STEP 2: uploading image")
         api_request(
             upload_url,
             "PUT",
@@ -166,6 +168,7 @@ def generate():
             }
         }
 
+        print("ROOMAI STEP 3: creating AI design")
         response = api_request(
             API + "/v1/ai-image-editor",
             "POST",
@@ -195,6 +198,7 @@ def generate():
 
         for _ in range(90):
 
+            print("ROOMAI STEP 4: checking result")
             response = api_request(
                 status_url,
                 "GET",
