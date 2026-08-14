@@ -23,6 +23,8 @@ public class MainActivity extends Activity {
     private static final int CAMERA_PERMISSION = 103;
 
     private ImageView roomImage;
+    private Spinner roomTypeSpinner;
+    private Spinner styleSpinner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,8 +34,8 @@ public class MainActivity extends Activity {
         Button uploadButton = findViewById(R.id.uploadButton);
         Button designButton = findViewById(R.id.designButton);
 
-        Spinner roomTypeSpinner = findViewById(R.id.roomTypeSpinner);
-        Spinner styleSpinner = findViewById(R.id.styleSpinner);
+        roomTypeSpinner = findViewById(R.id.roomTypeSpinner);
+        styleSpinner = findViewById(R.id.styleSpinner);
 
         roomImage = findViewById(R.id.roomImage);
 
