@@ -15,7 +15,11 @@ KEY = os.environ.get("MAGIC_HOUR_API_KEY")
 def home():
     return jsonify({
         "status": "RoomAI Backend OK",
-        "magic_hour_key": bool(KEY)
+        "magic_hour_key": bool(os.environ.get("MAGIC_HOUR_API_KEY")),
+        "env_keys": [
+            k for k in os.environ.keys()
+            if "MAGIC" in k.upper() or "HOUR" in k.upper()
+        ]
     })
 
 
