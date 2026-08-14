@@ -110,7 +110,10 @@ def generate():
                 pass
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "error": "Magic Hour request failed",
-            "details": str(e)
+            "details": str(e),
+            "exception_type": type(e).__name__
         }), 500
