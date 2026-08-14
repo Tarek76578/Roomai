@@ -136,7 +136,7 @@ public class MainActivity extends Activity {
                 input.close();
 
                 String boundary = "----RoomAI" + System.currentTimeMillis();
-                Toast.makeText(this, "Connecting to RoomAI...", Toast.LENGTH_SHORT).show();
+                runOnUiThread(() -> Toast.makeText(this, "Connecting to RoomAI...", Toast.LENGTH_SHORT).show());
                 URL url = new URL(BACKEND);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
