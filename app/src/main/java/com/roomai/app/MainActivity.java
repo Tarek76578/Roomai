@@ -15,6 +15,9 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.Toast;
+import java.io.*;
+import java.net.*;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
 
@@ -25,6 +28,10 @@ public class MainActivity extends Activity {
     private ImageView roomImage;
     private Spinner roomTypeSpinner;
     private Spinner styleSpinner;
+    private Uri selectedImageUri;
+
+    private static final String BACKEND =
+            "https://roomai-wagl.onrender.com/generate";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,13 +100,7 @@ public class MainActivity extends Activity {
         kitchenCard.setOnClickListener(v -> selectRoom("Kitchen"));
         livingCard.setOnClickListener(v -> selectRoom("Living Room"));
 
-        designButton.setOnClickListener(v -> {
-            Toast.makeText(
-                    this,
-                    "RoomAI: Generate Design pressed",
-                    Toast.LENGTH_LONG
-            ).show();
-        });
+        designButton.setOnClickListener(v -> generateDesign());
 
         } catch (Exception e) {
             Toast.makeText(
@@ -108,6 +109,149 @@ public class MainActivity extends Activity {
                     Toast.LENGTH_LONG
             ).show();
         }
+    }
+
+
+
+    private void generateDesign() {
+
+        if (selectedImageUri == null) {
+            Toast.makeText(this, "Please upload a room photo first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(this, "Generating design...", Toast.LENGTH_LONG).show();
+
+        new Thread(() -> {
+            try {
+                InputStream input = getContentResolver().openInputStream(selectedImageUri);
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                byte[] data = new byte[8192];
+                int n;
+
+                while ((n = input.read(data)) != -1) {
+                    buffer.write(data, 0, n);
+                }
+
+                input.close();
+
+                String boundary = "----RoomAI" + System.currentTimeMillis();
+                URL url = new URL(BACKEND);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(30000);
+                conn.setReadTimeout(180000);
+                conn.setRequestProperty(
+                        "Content-Type",
+                        "multipart/form-data; boundary=" + boundary
+                );
+
+                OutputStream output = conn.getOutputStream();
+
+                output.write((
+                        "--" + boundary + "\r\n" +
+                        "Content-Disposition: form-data; name=\"image\"; filename=\"room.jpg\"\r\n" +
+                        "Content-Type: image/jpeg\r\n\r\n"
+                ).getBytes("UTF-8"));
+
+                output.write(buffer.toByteArray());
+
+                output.write((
+                        "\r\n--" + boundary + "--\r\n"
+                ).getBytes("UTF-8"));
+
+                output.flush();
+                output.close();
+
+                InputStream responseStream =
+                        conn.getResponseCode() >= 400
+                        ? conn.getErrorStream()
+                        : conn.getInputStream();
+
+                BufferedReader reader =
+                        new BufferedReader(new InputStreamReader(responseStream));
+
+                StringBuilder result = new StringBuilder();
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    result.append(line);
+                }
+
+                reader.close();
+                conn.disconnect();
+
+                JSONObject json = new JSONObject(result.toString());
+
+                if (!json.has("image_url")) {
+                    runOnUiThread(() ->
+                            Toast.makeText(
+                                    this,
+                                    "Generation failed",
+                                    Toast.LENGTH_LONG
+                            ).show()
+                    );
+                    return;
+                }
+
+                String imageUrl = json.getString("image_url");
+
+                runOnUiThread(() -> loadResult(imageUrl));
+
+            } catch (Exception e) {
+                runOnUiThread(() ->
+                        Toast.makeText(
+                                this,
+                                "Error: " + e.getMessage(),
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
+            }
+        }).start();
+    }
+
+    private void loadResult(String imageUrl) {
+
+        new Thread(() -> {
+            try {
+                URL url = new URL(imageUrl);
+                HttpURLConnection conn =
+                        (HttpURLConnection) url.openConnection();
+
+                InputStream input = conn.getInputStream();
+
+                Bitmap bitmap =
+                        android.graphics.BitmapFactory.decodeStream(input);
+
+                input.close();
+                conn.disconnect();
+
+                runOnUiThread(() -> {
+                    if (bitmap != null) {
+                        roomImage.setImageBitmap(bitmap);
+                    selectedImageUri = Uri.parse(MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, "RoomAI", null));
+                        roomImage.setVisibility(View.VISIBLE);
+
+                        Toast.makeText(
+                                this,
+                                "Design generated successfully!",
+                                Toast.LENGTH_LONG
+                        ).show();
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() ->
+                        Toast.makeText(
+                                this,
+                                "Could not load result",
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
+            }
+        }).start();
     }
 
     private void selectRoom(String room) {
@@ -238,6 +382,7 @@ public class MainActivity extends Activity {
 
                 if (bitmap != null) {
                     roomImage.setImageBitmap(bitmap);
+                    selectedImageUri = Uri.parse(MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, "RoomAI", null));
                     roomImage.setVisibility(View.VISIBLE);
                 }
 
@@ -246,6 +391,7 @@ public class MainActivity extends Activity {
                 Uri imageUri = data.getData();
 
                 if (imageUri != null) {
+                    selectedImageUri = imageUri;
                     roomImage.setImageURI(imageUri);
                     roomImage.setVisibility(View.VISIBLE);
                 }
