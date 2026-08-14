@@ -1,4 +1,4 @@
-name: Build RoomAI APK
+name: Build RoomAI APK v2
 
 on:
   push:
