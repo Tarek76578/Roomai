@@ -18,6 +18,41 @@ def home():
     })
 
 
+@app.get("/test-magic")
+def test_magic():
+    try:
+        import urllib.request
+        import urllib.error
+
+        req = urllib.request.Request(
+            "https://api.magichour.ai/v1/files/upload-urls",
+            data=b'{"items":[{"extension":"jpg","type":"image"}]}',
+            headers={
+                "Authorization": "Bearer " + KEY,
+                "Content-Type": "application/json"
+            },
+            method="POST"
+        )
+
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return jsonify({
+                "magic_hour_status": r.status,
+                "message": "Authentication accepted"
+            })
+
+    except urllib.error.HTTPError as e:
+        return jsonify({
+            "magic_hour_status": e.code,
+            "message": e.read().decode("utf-8", errors="replace")
+        })
+
+    except Exception as e:
+        return jsonify({
+            "error": type(e).__name__,
+            "message": str(e)
+        }), 500
+
+
 @app.post("/generate")
 def generate():
     try:
