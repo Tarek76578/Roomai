@@ -1,0 +1,9 @@
+.gradle/
+build/
+app/build/
+firered_config.json
+room.jpg
+room_result.png
+roomai.py
+*.apk
+*.aab
