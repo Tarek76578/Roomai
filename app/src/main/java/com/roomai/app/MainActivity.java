@@ -150,7 +150,16 @@ public class MainActivity extends Activity {
 
                 OutputStream output = conn.getOutputStream();
 
+                String room = roomTypeSpinner.getSelectedItem().toString();
+                String style = styleSpinner.getSelectedItem().toString();
+
                 output.write((
+                        "--" + boundary + "\r\n" +
+                        "Content-Disposition: form-data; name=\"room\"\r\n\r\n" +
+                        room + "\r\n" +
+                        "--" + boundary + "\r\n" +
+                        "Content-Disposition: form-data; name=\"style\"\r\n\r\n" +
+                        style + "\r\n" +
                         "--" + boundary + "\r\n" +
                         "Content-Disposition: form-data; name=\"image\"; filename=\"room.jpg\"\r\n" +
                         "Content-Type: image/jpeg\r\n\r\n"
@@ -186,13 +195,20 @@ public class MainActivity extends Activity {
                 JSONObject json = new JSONObject(result.toString());
 
                 if (!json.has("image_url")) {
+
+                    String errorMessage =
+                            json.has("error")
+                            ? json.getString("error")
+                            : "Unknown backend error";
+
                     runOnUiThread(() ->
                             Toast.makeText(
                                     this,
-                                    "Generation failed",
+                                    "Generation failed: " + errorMessage,
                                     Toast.LENGTH_LONG
                             ).show()
                     );
+
                     return;
                 }
 
