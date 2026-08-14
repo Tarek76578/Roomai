@@ -94,13 +94,10 @@ public class MainActivity extends Activity {
         livingCard.setOnClickListener(v -> selectRoom("Living Room"));
 
         designButton.setOnClickListener(v -> {
-            String room = roomTypeSpinner.getSelectedItem().toString();
-            String style = styleSpinner.getSelectedItem().toString();
-
             Toast.makeText(
                     this,
-                    "Ready: " + room + " • " + style,
-                    Toast.LENGTH_SHORT
+                    "RoomAI: Generate Design pressed",
+                    Toast.LENGTH_LONG
             ).show();
         });
 
