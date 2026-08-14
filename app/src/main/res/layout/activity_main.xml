@@ -3,59 +3,69 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8F7F4">
+    android:background="#F7F5F0">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="20dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="RoomAI"
-            android:textColor="#222222"
-            android:textSize="32sp"
+            android:textColor="#171717"
+            android:textSize="30sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="AI Home Designer"
+            android:text="AI Interior Designer"
             android:textColor="#777777"
-            android:textSize="17sp" />
+            android:textSize="16sp" />
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="Transform your room"
-            android:textColor="#222222"
-            android:textSize="24sp"
+            android:layout_marginTop="30dp"
+            android:text="Redesign your space"
+            android:textColor="#171717"
+            android:textSize="27sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Upload a photo and let AI help you design your dream space."
+            android:text="Upload a photo and discover how your room could look with AI."
             android:textColor="#666666"
             android:textSize="16sp" />
+
+        <ImageView
+            android:id="@+id/roomImage"
+            android:layout_width="match_parent"
+            android:layout_height="230dp"
+            android:layout_marginTop="22dp"
+            android:background="#E8E5DE"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/uploadButton"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="28dp"
-            android:text="Upload Room Photo"
-            android:textSize="16sp" />
+            android:layout_height="58dp"
+            android:layout_marginTop="18dp"
+            android:text="📷  Add Room Photo"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="25dp"
             android:text="Room type"
             android:textColor="#222222"
             android:textSize="17sp"
@@ -65,12 +75,12 @@
             android:id="@+id/roomTypeSpinner"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="6dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="18dp"
             android:text="Design style"
             android:textColor="#222222"
             android:textSize="17sp"
@@ -80,13 +90,13 @@
             android:id="@+id/styleSpinner"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="6dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Describe what you want"
+            android:layout_marginTop="18dp"
+            android:text="What would you like to change?"
             android:textColor="#222222"
             android:textSize="17sp"
             android:textStyle="bold" />
@@ -94,20 +104,21 @@
         <EditText
             android:id="@+id/requestInput"
             android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:layout_marginTop="8dp"
+            android:layout_height="110dp"
+            android:layout_marginTop="7dp"
             android:gravity="top"
-            android:hint="Example: Make my living room modern and cozy..."
+            android:hint="Example: Make it modern, brighter and more spacious..."
             android:inputType="textMultiLine"
             android:padding="14dp"
-            android:textSize="16sp" />
+            android:textSize="15sp" />
 
         <Button
             android:id="@+id/designButton"
             android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:layout_marginTop="28dp"
-            android:text="Design My Room"
+            android:layout_height="60dp"
+            android:layout_marginTop="25dp"
+            android:layout_marginBottom="20dp"
+            android:text="✨  Generate Design"
             android:textSize="17sp"
             android:textStyle="bold" />
 
