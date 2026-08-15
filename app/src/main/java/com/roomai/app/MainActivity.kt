@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -96,20 +95,21 @@ fun NavItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
-    NavigationBarItem(
-        selected = false,
+    TextButton(
         onClick = {
             nav.navigate(route) {
                 launchSingleTop = true
             }
         },
-        icon = {
+        modifier = Modifier.weight(1f)
+    ) {
+        Column(
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+        ) {
             Icon(icon, contentDescription = label)
-        },
-        label = {
             Text(label)
         }
-    )
+    }
 }
 
 @Composable
