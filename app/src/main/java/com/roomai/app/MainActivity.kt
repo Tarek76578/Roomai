@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -652,10 +653,11 @@ suspend fun generateDesign(
         )
 
         output.write(
-            "Content-Disposition: form-data; " +
-                    "name=\"image\"; " +
-                    "filename=\"room.jpg\"\r\n"
-                .toByteArray()
+            (
+                "Content-Disposition: form-data; " +
+                        "name=\"image\"; " +
+                        "filename=\"room.jpg\"\r\n"
+            ).toByteArray()
         )
 
         output.write(
@@ -702,9 +704,10 @@ fun writeTextPart(
     )
 
     output.write(
-        "Content-Disposition: form-data; " +
-                "name=\"$name\"\r\n\r\n"
-            .toByteArray()
+        (
+            "Content-Disposition: form-data; " +
+                    "name=\"$name\"\r\n\r\n"
+        ).toByteArray()
     )
 
     output.write(value.toByteArray())
