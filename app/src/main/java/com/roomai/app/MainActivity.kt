@@ -20,6 +20,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -88,19 +93,19 @@ fun App(
             }
 
             composable("styles") {
-                Page("AI Styles")
+                Styles()
             }
 
             composable("enhance") {
-                Page("AI Enhance")
+                Enhance()
             }
 
             composable("furniture") {
-                Page("Furniture")
+                Furniture()
             }
 
             composable("products") {
-                Page("Products")
+                Products()
             }
         }
     }
@@ -564,9 +569,228 @@ fun writeTextPart(
     output.write("\r\n".toByteArray())
 }
 
+
+@Composable
+fun Styles() {
+    val options = listOf(
+        "Modern" to Icons.Default.Home,
+        "Minimalist" to Icons.Default.CropSquare,
+        "Luxury" to Icons.Default.Star,
+        "Scandinavian" to Icons.Default.Nature,
+        "Industrial" to Icons.Default.Build,
+        "Classic" to Icons.Default.AutoAwesome
+    )
+
+    FeaturePage(
+        "AI Styles",
+        "Choose a style for your next room",
+        options
+    )
+}
+
+@Composable
+fun Enhance() {
+    val options = listOf(
+        "Improve lighting" to Icons.Default.LightMode,
+        "Increase realism" to Icons.Default.AutoAwesome,
+        "Fix details" to Icons.Default.AutoFixHigh,
+        "Improve colors" to Icons.Default.Palette,
+        "Sharpen image" to Icons.Default.ZoomIn
+    )
+
+    FeaturePage(
+        "AI Enhance",
+        "Improve the quality of your room design",
+        options
+    )
+}
+
+@Composable
+fun Furniture() {
+    val options = listOf(
+        "Sofa" to Icons.Default.Home,
+        "Bed" to Icons.Default.BedroomParent,
+        "Table" to Icons.Default.TableBar,
+        "Chair" to Icons.Default.Chair,
+        "Storage" to Icons.Default.Inventory2,
+        "Lighting" to Icons.Default.Light
+    )
+
+    FeaturePage(
+        "Furniture",
+        "Explore furniture ideas",
+        options
+    )
+}
+
+@Composable
+fun Products() {
+    val options = listOf(
+        "Sofas" to Icons.Default.Home,
+        "Beds" to Icons.Default.BedroomParent,
+        "Tables" to Icons.Default.TableBar,
+        "Chairs" to Icons.Default.Chair,
+        "Lighting" to Icons.Default.Light,
+        "Decor" to Icons.Default.LocalFlorist
+    )
+
+    FeaturePage(
+        "Products",
+        "Discover products inspired by your designs",
+        options
+    )
+}
+
+@Composable
+fun FeaturePage(
+    title: String,
+    subtitle: String,
+    options: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>>
+) {
+    var selected by remember { mutableStateOf<String?>(null) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(Modifier.height(12.dp))
+        }
+
+        items(options) { option ->
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        selected = option.first
+                    },
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        option.second,
+                        contentDescription = option.first,
+                        modifier = Modifier.size(32.dp)
+                    )
+
+                    Spacer(Modifier.width(16.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            option.first,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Text(
+                            "Use this option in your next design",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null
+                    )
+                }
+            }
+        }
+
+        item {
+            selected?.let {
+                Text(
+                    "Selected: $it",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(30.dp))
+        }
+    }
+}
+
 @Composable
 fun Designs() {
-    Page("My Designs")
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text(
+                "My Designs",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                "Your generated interior designs will appear here.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Icon(
+                        Icons.Default.PhotoLibrary,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp)
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        "Your design library",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        "Generate a room to start building your personal collection."
+                    )
+
+                    Spacer(Modifier.height(18.dp))
+
+                    OutlinedButton(onClick = {}) {
+                        Icon(Icons.Default.Add, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Create Design")
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -574,67 +798,69 @@ fun Menu(
     dark: Boolean,
     setDark: (Boolean) -> Unit
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            "Menu",
-            style = MaterialTheme.typography.headlineLarge
-        )
+        item {
+            Text(
+                "Menu",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
-        Spacer(Modifier.height(20.dp))
+        item {
+            ListItem(
+                headlineContent = { Text("AI Styles") },
+                leadingContent = {
+                    Icon(Icons.Default.Palette, null)
+                }
+            )
+        }
 
-        ListItem(
-            headlineContent = {
-                Text("AI Styles")
-            },
-            leadingContent = {
-                Icon(Icons.Default.Palette, null)
-            }
-        )
+        item {
+            ListItem(
+                headlineContent = { Text("AI Enhance") },
+                leadingContent = {
+                    Icon(Icons.Default.AutoFixHigh, null)
+                }
+            )
+        }
 
-        ListItem(
-            headlineContent = {
-                Text("AI Enhance")
-            },
-            leadingContent = {
-                Icon(Icons.Default.AutoFixHigh, null)
-            }
-        )
+        item {
+            ListItem(
+                headlineContent = { Text("Furniture") },
+                leadingContent = {
+                    Icon(Icons.Default.Chair, null)
+                }
+            )
+        }
 
-        ListItem(
-            headlineContent = {
-                Text("Furniture")
-            },
-            leadingContent = {
-                Icon(Icons.Default.Chair, null)
-            }
-        )
+        item {
+            ListItem(
+                headlineContent = { Text("Products") },
+                leadingContent = {
+                    Icon(Icons.Default.ShoppingBag, null)
+                }
+            )
+        }
 
-        ListItem(
-            headlineContent = {
-                Text("Products")
-            },
-            leadingContent = {
-                Icon(Icons.Default.ShoppingBag, null)
-            }
-        )
-
-        ListItem(
-            headlineContent = {
-                Text("Dark Mode")
-            },
-            leadingContent = {
-                Icon(Icons.Default.DarkMode, null)
-            },
-            trailingContent = {
-                Switch(
-                    checked = dark,
-                    onCheckedChange = setDark
-                )
-            }
-        )
+        item {
+            ListItem(
+                headlineContent = { Text("Dark Mode") },
+                leadingContent = {
+                    Icon(Icons.Default.DarkMode, null)
+                },
+                trailingContent = {
+                    Switch(
+                        checked = dark,
+                        onCheckedChange = setDark
+                    )
+                }
+            )
+        }
     }
 }
