@@ -619,7 +619,9 @@ suspend fun generateDesign(
     uri: Uri,
     room: String,
     style: String,
-    userPrompt: String
+    userPrompt: String,
+    operation: String = "generate",
+    selection: String = ""
 ): String = withContext(Dispatchers.IO) {
 
     val boundary = "RoomAI-${UUID.randomUUID()}"
@@ -641,6 +643,8 @@ suspend fun generateDesign(
 
         writeTextPart(output, boundary, "room", room)
         writeTextPart(output, boundary, "style", style)
+        writeTextPart(output, boundary, "operation", operation)
+        writeTextPart(output, boundary, "selection", selection)
         writeTextPart(output, boundary, "prompt", userPrompt)
 
         val bytes =
@@ -1039,17 +1043,31 @@ data class ToolOption(
 fun ToolPage(
     title: String,
     subtitle: String,
+    operation: String,
     options: List<ToolOption>
 ) {
-    var selected by remember {
-        mutableStateOf<String?>(null)
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var selected by remember { mutableStateOf<String?>(null) }
+    var resultUrl by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    val picker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        imageUri = uri
+        resultUrl = null
+        error = null
     }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
             Text(
@@ -1057,14 +1075,68 @@ fun ToolPage(
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
-
             Text(subtitle)
+        }
+
+        item {
+            if (imageUri == null) {
+                OutlinedCard(
+                    onClick = { picker.launch("image/*") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(210.dp),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.AddAPhoto,
+                            null,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "Add Room Photo",
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text("JPG, PNG or WEBP")
+                    }
+                }
+            } else {
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = "Room",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(250.dp),
+                    contentScale = ContentScale.Crop
+                )
+
+                OutlinedButton(
+                    onClick = { picker.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Change Photo")
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Choose an option",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
 
         items(options) { option ->
             ElevatedCard(
                 onClick = {
                     selected = option.title
+                    error = null
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp)
@@ -1073,13 +1145,12 @@ fun ToolPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(18.dp),
-                    verticalAlignment =
-                        Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         Icons.Default.AutoAwesome,
                         null,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(30.dp)
                     )
 
                     Spacer(Modifier.width(14.dp))
@@ -1089,33 +1160,125 @@ fun ToolPage(
                     ) {
                         Text(
                             option.title,
-                            style =
-                                MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-
                         Text(option.description)
                     }
 
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        null
-                    )
+                    if (selected == option.title) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            null
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            null
+                        )
+                    }
                 }
             }
         }
 
         item {
-            selected?.let {
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        "Selected: $it",
-                        modifier = Modifier.padding(16.dp),
-                        fontWeight = FontWeight.Bold
+            Button(
+                enabled = imageUri != null &&
+                        selected != null &&
+                        !loading,
+                onClick = {
+                    val uri = imageUri ?: return@Button
+                    val choice = selected ?: return@Button
+
+                    scope.launch {
+                        loading = true
+                        error = null
+                        resultUrl = null
+
+                        try {
+                            val style =
+                                if (operation == "generate") choice else "Modern"
+
+                            val url = generateDesign(
+                                context = context,
+                                uri = uri,
+                                room = "Living Room",
+                                style = style,
+                                userPrompt = "",
+                                operation = operation,
+                                selection = choice
+                            )
+
+                            resultUrl = url
+
+                            saveDesign(
+                                context,
+                                url,
+                                "Living Room",
+                                choice
+                            )
+                        } catch (e: Exception) {
+                            error = e.message ?: "Operation failed"
+                        } finally {
+                            loading = false
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
                     )
+                    Spacer(Modifier.width(10.dp))
+                    Text("Processing...")
+                } else {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        null
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Run AI")
                 }
+            }
+        }
+
+        item {
+            error?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
+        item {
+            resultUrl?.let { url ->
+                Text(
+                    "AI Result",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                AsyncImage(
+                    model = url,
+                    contentDescription = "AI result",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(350.dp),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    "Saved to My Designs",
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -1124,41 +1287,18 @@ fun ToolPage(
 @Composable
 fun Styles() {
     ToolPage(
-        "AI Styles",
-        "Choose the visual direction for your next room.",
-        listOf(
-            ToolOption(
-                "Modern",
-                "Clean lines and contemporary furniture."
-            ),
-            ToolOption(
-                "Minimalist",
-                "Simple forms and uncluttered spaces."
-            ),
-            ToolOption(
-                "Luxury",
-                "Premium materials and elegant details."
-            ),
-            ToolOption(
-                "Scandinavian",
-                "Bright, natural and comfortable interiors."
-            ),
-            ToolOption(
-                "Industrial",
-                "Raw materials and urban character."
-            ),
-            ToolOption(
-                "Classic",
-                "Timeless furniture and refined details."
-            ),
-            ToolOption(
-                "Bohemian",
-                "Layered textures and expressive decoration."
-            ),
-            ToolOption(
-                "Japandi",
-                "Japanese simplicity with Scandinavian warmth."
-            )
+        title = "AI Styles",
+        subtitle = "Choose a style and let AI redesign your room.",
+        operation = "generate",
+        options = listOf(
+            ToolOption("Modern", "Clean lines and contemporary furniture."),
+            ToolOption("Minimalist", "Simple forms and uncluttered spaces."),
+            ToolOption("Luxury", "Premium materials and elegant details."),
+            ToolOption("Scandinavian", "Bright, natural and comfortable interiors."),
+            ToolOption("Industrial", "Raw materials and urban character."),
+            ToolOption("Classic", "Timeless furniture and refined details."),
+            ToolOption("Bohemian", "Layered textures and expressive decoration."),
+            ToolOption("Japandi", "Japanese simplicity with Scandinavian warmth.")
         )
     )
 }
@@ -1166,29 +1306,15 @@ fun Styles() {
 @Composable
 fun Enhance() {
     ToolPage(
-        "AI Enhance",
-        "Choose an enhancement direction for AI image processing.",
-        listOf(
-            ToolOption(
-                "Improve Lighting",
-                "Create more natural and balanced lighting."
-            ),
-            ToolOption(
-                "Increase Realism",
-                "Improve materials, shadows and realism."
-            ),
-            ToolOption(
-                "Fix Details",
-                "Clean visual artifacts and small details."
-            ),
-            ToolOption(
-                "Improve Colors",
-                "Balance colors while preserving the design."
-            ),
-            ToolOption(
-                "Sharpen Image",
-                "Improve perceived image clarity."
-            )
+        title = "AI Enhance",
+        subtitle = "Improve your existing room image with AI.",
+        operation = "enhance",
+        options = listOf(
+            ToolOption("Improve Lighting", "Create more natural and balanced lighting."),
+            ToolOption("Increase Realism", "Improve materials, shadows and realism."),
+            ToolOption("Fix Details", "Clean visual artifacts and small details."),
+            ToolOption("Improve Colors", "Balance colors while preserving the design."),
+            ToolOption("Sharpen Image", "Improve perceived image clarity.")
         )
     )
 }
@@ -1196,9 +1322,10 @@ fun Enhance() {
 @Composable
 fun Furniture() {
     ToolPage(
-        "Furniture",
-        "Explore furniture concepts for your room.",
-        listOf(
+        title = "Furniture",
+        subtitle = "Redesign furniture in your existing room.",
+        operation = "furniture",
+        options = listOf(
             ToolOption("Sofa", "Living-room seating concepts."),
             ToolOption("Bed", "Bedroom centerpiece concepts."),
             ToolOption("Table", "Dining and coffee tables."),
@@ -1212,9 +1339,10 @@ fun Furniture() {
 @Composable
 fun Products() {
     ToolPage(
-        "Products",
-        "Explore product categories inspired by your designs.",
-        listOf(
+        title = "Products",
+        subtitle = "Add coordinated products to your interior.",
+        operation = "products",
+        options = listOf(
             ToolOption("Sofas", "Sofa ideas for different interior styles."),
             ToolOption("Beds", "Bedroom furniture concepts."),
             ToolOption("Tables", "Dining and living-room tables."),
