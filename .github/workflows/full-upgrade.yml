@@ -7,11 +7,11 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  upgrade:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout RoomAI
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -20,18 +20,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Backup MainActivity
-        run: |
-          cp app/src/main/java/com/roomai/app/MainActivity.kt \
-             app/src/main/java/com/roomai/app/MainActivity_before_github_upgrade.kt
-
-      - name: Verify RoomAI
+      - name: Verify project
         run: |
           test -f app/src/main/java/com/roomai/app/MainActivity.kt
           test -f backend.py
-          echo "RoomAI source verified"
+          test -f app/build.gradle
+          echo "RoomAI project verified"
 
-      - name: Build Debug APK
+      - name: Build APK
         run: |
           chmod +x ./gradlew
           ./gradlew assembleDebug --stacktrace
@@ -39,13 +35,11 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: RoomAI-debug
+          name: RoomAI-full-upgrade-debug
           path: app/build/outputs/apk/debug/*.apk
 
-      - name: Commit backup
+      - name: Build summary
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/com/roomai/app/MainActivity_before_github_upgrade.kt
-          git commit -m "Backup RoomAI before full upgrade" || true
-          git push
+          echo "======================================"
+          echo "RoomAI build completed successfully"
+          echo "======================================"
