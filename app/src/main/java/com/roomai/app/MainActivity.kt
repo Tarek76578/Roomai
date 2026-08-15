@@ -101,7 +101,7 @@ fun NavItem(
                 launchSingleTop = true
             }
         },
-        modifier = Modifier.weight(1f)
+        modifier = Modifier
     ) {
         Column(
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
@@ -172,7 +172,7 @@ fun Home(nav: NavHostController) {
             FeatureCard(
                 title = "Styles",
                 icon = Icons.Default.Palette,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier,
                 onClick = {
                     nav.navigate("styles")
                 }
@@ -181,7 +181,7 @@ fun Home(nav: NavHostController) {
             FeatureCard(
                 title = "Enhance",
                 icon = Icons.Default.AutoFixHigh,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier,
                 onClick = {
                     nav.navigate("enhance")
                 }
@@ -197,7 +197,7 @@ fun Home(nav: NavHostController) {
             FeatureCard(
                 title = "Furniture",
                 icon = Icons.Default.Chair,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier,
                 onClick = {
                     nav.navigate("furniture")
                 }
@@ -206,7 +206,7 @@ fun Home(nav: NavHostController) {
             FeatureCard(
                 title = "Products",
                 icon = Icons.Default.ShoppingBag,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier,
                 onClick = {
                     nav.navigate("products")
                 }
