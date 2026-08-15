@@ -1,6 +1,19 @@
 package com.roomai.app
 
 import android.os.Bundle
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.DataOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.UUID
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -15,6 +28,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.roomai.app.ui.RoomAITheme
+
+private const val BACKEND_URL = "https://roomai-wagl.onrender.com/generate"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -264,75 +279,286 @@ fun Page(title: String) {
 
 @Composable
 fun Create() {
-    Column(
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var room by remember { mutableStateOf("Living Room") }
+    var style by remember { mutableStateOf("Modern") }
+    var prompt by remember { mutableStateOf("") }
+    var resultUrl by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    val picker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        imageUri = uri
+        resultUrl = null
+        error = null
+    }
+
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text(
-            "Create",
-            style = MaterialTheme.typography.headlineLarge
-        )
-
-        Text("Create a new AI interior design")
-
-        Spacer(Modifier.height(24.dp))
-
-        Button(
-            onClick = {},
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.AddAPhoto, null)
-
-            Spacer(Modifier.width(8.dp))
-
-            Text("Add Room Photo")
+        item {
+            Text(
+                "Create",
+                style = MaterialTheme.typography.headlineLarge
+            )
+            Text("Create a new AI interior design")
         }
 
-        Spacer(Modifier.height(12.dp))
+        item {
+            if (imageUri == null) {
+                Button(
+                    onClick = { picker.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.AddAPhoto, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add Room Photo")
+                }
+            } else {
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = "Room photo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp),
+                    contentScale = ContentScale.Crop
+                )
 
-        OutlinedButton(
-            onClick = {},
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.Palette, null)
-
-            Spacer(Modifier.width(8.dp))
-
-            Text("Choose Style")
+                OutlinedButton(
+                    onClick = { picker.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Change Photo")
+                }
+            }
         }
 
-        Spacer(Modifier.height(16.dp))
+        item {
+            Text("Room", style = MaterialTheme.typography.titleMedium)
 
-        var description by remember {
-            mutableStateOf("")
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    listOf(
+                        "Living Room",
+                        "Bedroom",
+                        "Kitchen",
+                        "Office",
+                        "Dining Room"
+                    )
+                ) { value ->
+                    FilterChip(
+                        selected = room == value,
+                        onClick = { room = value },
+                        label = { Text(value) }
+                    )
+                }
+            }
         }
 
-        OutlinedTextField(
-            value = description,
-            onValueChange = {
-                description = it
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = {
-                Text("Describe your design")
-            },
-            minLines = 4
-        )
+        item {
+            Text("Style", style = MaterialTheme.typography.titleMedium)
 
-        Spacer(Modifier.height(18.dp))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    listOf(
+                        "Modern",
+                        "Minimalist",
+                        "Luxury",
+                        "Scandinavian",
+                        "Industrial",
+                        "Classic",
+                        "Bohemian",
+                        "Japandi"
+                    )
+                ) { value ->
+                    FilterChip(
+                        selected = style == value,
+                        onClick = { style = value },
+                        label = { Text(value) }
+                    )
+                }
+            }
+        }
 
-        Button(
-            onClick = {},
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.AutoAwesome, null)
+        item {
+            OutlinedTextField(
+                value = prompt,
+                onValueChange = { prompt = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Additional instructions") },
+                placeholder = {
+                    Text("Example: add warm lighting and a large sofa")
+                },
+                minLines = 4
+            )
+        }
 
-            Spacer(Modifier.width(8.dp))
+        item {
+            Button(
+                enabled = imageUri != null && !loading,
+                onClick = {
+                    val uri = imageUri ?: return@Button
 
-            Text("Generate Design")
+                    scope.launch {
+                        loading = true
+                        error = null
+                        resultUrl = null
+
+                        try {
+                            resultUrl = generateDesign(
+                                context,
+                                uri,
+                                room,
+                                style,
+                                prompt
+                            )
+                        } catch (e: Exception) {
+                            error = e.message ?: "Generation failed"
+                        } finally {
+                            loading = false
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Generating...")
+                } else {
+                    Icon(Icons.Default.AutoAwesome, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Generate Design")
+                }
+            }
+        }
+
+        item {
+            error?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
+        item {
+            resultUrl?.let { url ->
+                Text(
+                    "Your AI Design",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+
+                AsyncImage(
+                    model = url,
+                    contentDescription = "Generated design",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
     }
+}
+
+suspend fun generateDesign(
+    context: Context,
+    uri: Uri,
+    room: String,
+    style: String,
+    prompt: String
+): String = withContext(Dispatchers.IO) {
+
+    val boundary = "RoomAI-${UUID.randomUUID()}"
+
+    val connection =
+        URL(BACKEND_URL).openConnection() as HttpURLConnection
+
+    connection.requestMethod = "POST"
+    connection.doOutput = true
+    connection.connectTimeout = 30000
+    connection.readTimeout = 180000
+
+    connection.setRequestProperty(
+        "Content-Type",
+        "multipart/form-data; boundary=$boundary"
+    )
+
+    DataOutputStream(connection.outputStream).use { output ->
+
+        writeTextPart(output, boundary, "room", room)
+        writeTextPart(output, boundary, "style", style)
+        writeTextPart(output, boundary, "prompt", prompt)
+
+        val bytes =
+            context.contentResolver
+                .openInputStream(uri)
+                ?.use { it.readBytes() }
+                ?: throw Exception("Could not read image")
+
+        output.writeBytes("--$boundary\r\n".toByteArray())
+        output.writeBytes(
+            "Content-Disposition: form-data; name=\"image\"; filename=\"room.jpg\"\r\n"
+                .toByteArray()
+        )
+        output.writeBytes(
+            "Content-Type: image/jpeg\r\n\r\n".toByteArray()
+        )
+        output.write(bytes)
+        output.writeBytes("\r\n".toByteArray())
+        output.writeBytes("--$boundary--\r\n".toByteArray())
+    }
+
+    val code = connection.responseCode
+
+    val stream =
+        if (code in 200..299) connection.inputStream
+        else connection.errorStream
+
+    val response =
+        stream?.bufferedReader()?.use { it.readText() }
+            ?: throw Exception("Empty backend response")
+
+    if (code !in 200..299) {
+        throw Exception(response)
+    }
+
+    Regex("\"image_url\"\\s*:\\s*\"([^\"]+)\"")
+        .find(response)
+        ?.groupValues
+        ?.get(1)
+        ?: throw Exception("Backend returned no image URL")
+}
+
+fun writeTextPart(
+    output: DataOutputStream,
+    boundary: String,
+    name: String,
+    value: String
+) {
+    output.writeBytes("--$boundary\r\n".toByteArray())
+    output.writeBytes(
+        "Content-Disposition: form-data; name=\"$name\"\r\n\r\n"
+            .toByteArray()
+    )
+    output.writeBytes(value.toByteArray())
+    output.writeBytes("\r\n".toByteArray())
 }
 
 @Composable
