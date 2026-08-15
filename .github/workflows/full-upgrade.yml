@@ -1,0 +1,51 @@
+name: RoomAI Full Upgrade
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout RoomAI
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Backup MainActivity
+        run: |
+          cp app/src/main/java/com/roomai/app/MainActivity.kt \
+             app/src/main/java/com/roomai/app/MainActivity_before_github_upgrade.kt
+
+      - name: Verify RoomAI
+        run: |
+          test -f app/src/main/java/com/roomai/app/MainActivity.kt
+          test -f backend.py
+          echo "RoomAI source verified"
+
+      - name: Build Debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RoomAI-debug
+          path: app/build/outputs/apk/debug/*.apk
+
+      - name: Commit backup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/roomai/app/MainActivity_before_github_upgrade.kt
+          git commit -m "Backup RoomAI before full upgrade" || true
+          git push
