@@ -126,7 +126,6 @@ fun RoomAIApp(
 }
 
 @Composable
-@Composable
 private fun RowScope.BottomItem(
     nav: NavHostController,
     route: String,
