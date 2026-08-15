@@ -12,8 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.*
-
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.roomai.app.ui.RoomAITheme
 
 class MainActivity : ComponentActivity() {
@@ -24,14 +25,17 @@ class MainActivity : ComponentActivity() {
             var dark by remember { mutableStateOf(false) }
 
             RoomAITheme(dark) {
-                App(dark) { dark = it }
+                App(dark = dark, setDark = { dark = it })
             }
         }
     }
 }
 
 @Composable
-fun App(dark: Boolean, setDark: (Boolean) -> Unit) {
+fun App(
+    dark: Boolean,
+    setDark: (Boolean) -> Unit
+) {
     val nav = rememberNavController()
 
     Scaffold(
@@ -44,19 +48,43 @@ fun App(dark: Boolean, setDark: (Boolean) -> Unit) {
             }
         }
     ) { padding ->
+
         NavHost(
             navController = nav,
             startDestination = "home",
             modifier = Modifier.padding(padding)
         ) {
-            composable("home") { Home(nav) }
-            composable("create") { Create() }
-            composable("designs") { Designs() }
-            composable("menu") { Menu(dark, setDark) }
-            composable("styles") { Page("Styles") }
-            composable("enhance") { Page("AI Enhance") }
-            composable("furniture") { Page("Furniture") }
-            composable("products") { Page("Products") }
+            composable("home") {
+                Home(nav)
+            }
+
+            composable("create") {
+                Create()
+            }
+
+            composable("designs") {
+                Designs()
+            }
+
+            composable("menu") {
+                Menu(dark, setDark)
+            }
+
+            composable("styles") {
+                Page("AI Styles")
+            }
+
+            composable("enhance") {
+                Page("AI Enhance")
+            }
+
+            composable("furniture") {
+                Page("Furniture")
+            }
+
+            composable("products") {
+                Page("Products")
+            }
         }
     }
 }
@@ -68,76 +96,121 @@ fun NavItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
-    androidx.compose.material3.NavigationBarItem(
+    NavigationBarItem(
         selected = false,
-        onClick = { nav.navigate(route) },
-        icon = { Icon(icon, null) },
-        label = { Text(label) }
+        onClick = {
+            nav.navigate(route) {
+                launchSingleTop = true
+            }
+        },
+        icon = {
+            Icon(icon, contentDescription = label)
+        },
+        label = {
+            Text(label)
+        }
     )
 }
 
 @Composable
 fun Home(nav: NavHostController) {
     Column(
-        Modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        Text("RoomAI", style = MaterialTheme.typography.headlineLarge)
-        Text("AI Interior Designer")
+        Text(
+            text = "RoomAI",
+            style = MaterialTheme.typography.headlineLarge
+        )
+
+        Text(
+            text = "AI Interior Designer",
+            style = MaterialTheme.typography.bodyLarge
+        )
 
         Spacer(Modifier.height(30.dp))
 
         ElevatedCard(
-            onClick = { nav.navigate("create") },
+            onClick = {
+                nav.navigate("create")
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(Modifier.padding(24.dp)) {
-                Icon(Icons.Default.AutoAwesome, null)
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null
+                )
+
                 Spacer(Modifier.height(10.dp))
+
                 Text(
                     "Design your room",
                     style = MaterialTheme.typography.headlineSmall
                 )
+
                 Text("Transform your room with AI")
             }
         }
 
         Spacer(Modifier.height(24.dp))
-        Text("Explore", style = MaterialTheme.typography.titleLarge)
+
+        Text(
+            "Explore",
+            style = MaterialTheme.typography.titleLarge
+        )
 
         Spacer(Modifier.height(12.dp))
 
         Row(
-            Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             FeatureCard(
-                "Styles",
-                Icons.Default.Palette
-            , Modifier.weight(1f)) { nav.navigate("styles") }
+                title = "Styles",
+                icon = Icons.Default.Palette,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    nav.navigate("styles")
+                }
+            )
 
             FeatureCard(
-                "Enhance",
-                Icons.Default.AutoFixHigh
-            , Modifier.weight(1f)) { nav.navigate("enhance") }
+                title = "Enhance",
+                icon = Icons.Default.AutoFixHigh,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    nav.navigate("enhance")
+                }
+            )
         }
 
         Spacer(Modifier.height(12.dp))
 
         Row(
-            Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             FeatureCard(
-                "Furniture",
-                Icons.Default.Chair
-            , Modifier.weight(1f)) { nav.navigate("furniture") }
+                title = "Furniture",
+                icon = Icons.Default.Chair,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    nav.navigate("furniture")
+                }
+            )
 
             FeatureCard(
-                "Products",
-                Icons.Default.ShoppingBag
-            , Modifier.weight(1f)) { nav.navigate("products") }
+                title = "Products",
+                icon = Icons.Default.ShoppingBag,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    nav.navigate("products")
+                }
+            )
         }
     }
 }
@@ -146,49 +219,32 @@ fun Home(nav: NavHostController) {
 fun FeatureCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.height(120.dp)
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Icon(icon, null)
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = title
+            )
+
             Spacer(Modifier.height(10.dp))
+
             Text(title)
         }
-    }
-}
-        }
-
-        ListItem(
-            headlineContent = { Text("Furniture") },
-            leadingContent = { Icon(Icons.Default.Chair, null) }
-        )
-
-        ListItem(
-            headlineContent = { Text("Products") },
-            leadingContent = { Icon(Icons.Default.ShoppingBag, null) }
-        )
-
-        ListItem(
-            headlineContent = { Text("Dark Mode") },
-            leadingContent = { Icon(Icons.Default.DarkMode, null) },
-            trailingContent = {
-                Switch(
-                    checked = dark,
-                    onCheckedChange = setDark
-                )
-            }
-        )
     }
 }
 
 @Composable
 fun Page(title: String) {
-    Box(
-        Modifier
+    Column(
+        modifier = Modifier
             .fillMaxSize()
             .padding(24.dp)
     ) {
@@ -196,13 +252,28 @@ fun Page(title: String) {
             title,
             style = MaterialTheme.typography.headlineLarge
         )
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            "RoomAI feature",
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }
 
 @Composable
 fun Create() {
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Create", style = MaterialTheme.typography.headlineLarge)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text(
+            "Create",
+            style = MaterialTheme.typography.headlineLarge
+        )
+
         Text("Create a new AI interior design")
 
         Spacer(Modifier.height(24.dp))
@@ -212,7 +283,9 @@ fun Create() {
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.AddAPhoto, null)
+
             Spacer(Modifier.width(8.dp))
+
             Text("Add Room Photo")
         }
 
@@ -223,17 +296,27 @@ fun Create() {
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.Palette, null)
+
             Spacer(Modifier.width(8.dp))
+
             Text("Choose Style")
         }
 
         Spacer(Modifier.height(16.dp))
 
+        var description by remember {
+            mutableStateOf("")
+        }
+
         OutlinedTextField(
-            value = "",
-            onValueChange = {},
+            value = description,
+            onValueChange = {
+                description = it
+            },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Describe your design") },
+            label = {
+                Text("Describe your design")
+            },
             minLines = 4
         )
 
@@ -244,7 +327,9 @@ fun Create() {
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.AutoAwesome, null)
+
             Spacer(Modifier.width(8.dp))
+
             Text("Generate Design")
         }
     }
@@ -256,35 +341,65 @@ fun Designs() {
 }
 
 @Composable
-fun Menu(dark: Boolean, setDark: (Boolean) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Menu", style = MaterialTheme.typography.headlineLarge)
+fun Menu(
+    dark: Boolean,
+    setDark: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text(
+            "Menu",
+            style = MaterialTheme.typography.headlineLarge
+        )
 
         Spacer(Modifier.height(20.dp))
 
         ListItem(
-            headlineContent = { Text("AI Styles") },
-            leadingContent = { Icon(Icons.Default.Palette, null) }
+            headlineContent = {
+                Text("AI Styles")
+            },
+            leadingContent = {
+                Icon(Icons.Default.Palette, null)
+            }
         )
 
         ListItem(
-            headlineContent = { Text("AI Enhance") },
-            leadingContent = { Icon(Icons.Default.AutoFixHigh, null) }
+            headlineContent = {
+                Text("AI Enhance")
+            },
+            leadingContent = {
+                Icon(Icons.Default.AutoFixHigh, null)
+            }
         )
 
         ListItem(
-            headlineContent = { Text("Furniture") },
-            leadingContent = { Icon(Icons.Default.Chair, null) }
+            headlineContent = {
+                Text("Furniture")
+            },
+            leadingContent = {
+                Icon(Icons.Default.Chair, null)
+            }
         )
 
         ListItem(
-            headlineContent = { Text("Products") },
-            leadingContent = { Icon(Icons.Default.ShoppingBag, null) }
+            headlineContent = {
+                Text("Products")
+            },
+            leadingContent = {
+                Icon(Icons.Default.ShoppingBag, null)
+            }
         )
 
         ListItem(
-            headlineContent = { Text("Dark Mode") },
-            leadingContent = { Icon(Icons.Default.DarkMode, null) },
+            headlineContent = {
+                Text("Dark Mode")
+            },
+            leadingContent = {
+                Icon(Icons.Default.DarkMode, null)
+            },
             trailingContent = {
                 Switch(
                     checked = dark,
