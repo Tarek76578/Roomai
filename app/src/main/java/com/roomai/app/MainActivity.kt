@@ -68,7 +68,7 @@ fun NavItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
-    NavigationBarItem(
+    androidx.compose.material3.NavigationBarItem(
         selected = false,
         onClick = { nav.navigate(route) },
         icon = { Icon(icon, null) },
