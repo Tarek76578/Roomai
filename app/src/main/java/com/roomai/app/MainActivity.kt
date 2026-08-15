@@ -17,6 +17,9 @@ import java.util.UUID
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -512,17 +515,17 @@ suspend fun generateDesign(
                 ?.use { it.readBytes() }
                 ?: throw Exception("Could not read image")
 
-        output.writeBytes("--$boundary\r\n".toByteArray())
-        output.writeBytes(
+        output.write("--$boundary\r\n".toByteArray())
+        output.write(
             "Content-Disposition: form-data; name=\"image\"; filename=\"room.jpg\"\r\n"
                 .toByteArray()
         )
-        output.writeBytes(
+        output.write(
             "Content-Type: image/jpeg\r\n\r\n".toByteArray()
         )
         output.write(bytes)
-        output.writeBytes("\r\n".toByteArray())
-        output.writeBytes("--$boundary--\r\n".toByteArray())
+        output.write("\r\n".toByteArray())
+        output.write("--$boundary--\r\n".toByteArray())
     }
 
     val code = connection.responseCode
@@ -552,13 +555,13 @@ fun writeTextPart(
     name: String,
     value: String
 ) {
-    output.writeBytes("--$boundary\r\n".toByteArray())
-    output.writeBytes(
+    output.write("--$boundary\r\n".toByteArray())
+    output.write(
         "Content-Disposition: form-data; name=\"$name\"\r\n\r\n"
             .toByteArray()
     )
-    output.writeBytes(value.toByteArray())
-    output.writeBytes("\r\n".toByteArray())
+    output.write(value.toByteArray())
+    output.write("\r\n".toByteArray())
 }
 
 @Composable
