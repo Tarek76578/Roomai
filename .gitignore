@@ -1,9 +1,31 @@
+# Gradle
 .gradle/
 build/
 app/build/
-firered_config.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Local backups
+*_backup.py
+*_before_http.py
+*_corrupt_backup.py
+*_empty_backup.py
+*_failed_edit.py
+*_old.py
+MainActivity_broken_backup.kt
+MainActivity.kt.backup
+backend_v2_before_v3.py
+
+# Local test files
 room.jpg
 room_result.png
+
+# Local configuration
+firered_config.json
 roomai.py
+
+# Android packages
 *.apk
 *.aab

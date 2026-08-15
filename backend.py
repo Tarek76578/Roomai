@@ -1,14 +1,24 @@
 import os
+import json
+import time
 import tempfile
-import traceback
-
+import urllib.request
 from flask import Flask, request, jsonify
-from magic_hour import Client
 
 app = Flask(__name__)
 
+API = "https://api.magichour.ai"
 KEY = os.environ.get("MAGIC_HOUR_API_KEY")
 
+def api_request(url, method="GET", data=None, headers=None):
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers=headers or {},
+        method=method
+    )
+    with urllib.request.urlopen(req, timeout=90) as r:
+        return r.read()
 
 @app.get("/")
 def home():
@@ -17,114 +27,141 @@ def home():
         "magic_hour_configured": bool(KEY)
     })
 
-
 @app.post("/generate")
 def generate():
     image_path = None
 
     try:
         if not KEY:
-            return jsonify({
-                "error": "AI service is not configured"
-            }), 500
+            return jsonify({"error": "MAGIC_HOUR_API_KEY missing"}), 500
 
         if "image" not in request.files:
-            return jsonify({
-                "error": "No room image was provided"
-            }), 400
+            return jsonify({"error": "No image"}), 400
 
         image = request.files["image"]
 
         if not image.filename:
-            return jsonify({
-                "error": "Image filename is missing"
-            }), 400
+            return jsonify({"error": "Invalid image"}), 400
 
         room = request.form.get("room", "Living Room").strip()
         style = request.form.get("style", "Modern").strip()
         user_prompt = request.form.get("prompt", "").strip()
 
-        extension = (
-            image.filename.rsplit(".", 1)[-1].lower()
-            if "." in image.filename
-            else "jpg"
-        )
+        ext = image.filename.rsplit(".", 1)[-1].lower() if "." in image.filename else "jpg"
 
-        if extension not in ("jpg", "jpeg", "png", "webp"):
-            extension = "jpg"
+        if ext not in ("jpg", "jpeg", "png", "webp"):
+            ext = "jpg"
 
-        with tempfile.NamedTemporaryFile(
-            suffix="." + extension,
-            delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix="." + ext, delete=False) as f:
             image.save(f)
             image_path = f.name
 
-        client = Client(token=KEY)
+        payload = {
+            "items": [{
+                "extension": ext,
+                "type": "image"
+            }]
+        }
 
-        file_path = client.v1.files.upload_file(image_path)
+        response = api_request(
+            API + "/v1/files/upload-urls",
+            "POST",
+            json.dumps(payload).encode(),
+            {
+                "Authorization": "Bearer " + KEY,
+                "Content-Type": "application/json"
+            }
+        )
 
-        base_prompt = (
+        item = json.loads(response)["items"][0]
+
+        with open(image_path, "rb") as f:
+            image_data = f.read()
+
+        content_type = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "webp": "image/webp"
+        }.get(ext, "image/jpeg")
+
+        api_request(
+            item["upload_url"],
+            "PUT",
+            image_data,
+            {"Content-Type": content_type}
+        )
+
+        prompt = (
             f"Transform this {room} into a beautiful {style} interior. "
-            "Add appropriate furniture, decoration, lighting and interior "
-            "design elements suitable for the room. "
-            "Preserve the original walls, windows, doors, floor, room "
-            "geometry, perspective and camera angle. "
+            "Add appropriate furniture, decoration and lighting. "
+            "Preserve the original walls, windows, doors, floor, "
+            "room geometry, perspective and camera angle. "
             "Do not change the architecture. "
-            "Keep the result photorealistic, coherent and professionally designed."
+            "Make it photorealistic and professionally designed."
         )
 
         if user_prompt:
-            base_prompt += (
-                " Additional user instructions: "
-                + user_prompt
-            )
+            prompt += " Additional instructions: " + user_prompt
 
-        result = client.v1.ai_image_editor.generate(
-            assets={
-                "image_file_paths": [file_path]
-            },
-            style={
-                "prompt": base_prompt
-            },
-            name="RoomAI",
-            image_count=1,
-            model="qwen-edit",
-            aspect_ratio="auto",
-            resolution="640px",
-            wait_for_completion=True,
-            download_outputs=False
+        payload = {
+            "name": "RoomAI",
+            "image_count": 1,
+            "model": "qwen-edit",
+            "aspect_ratio": "auto",
+            "resolution": "640px",
+            "style": {"prompt": prompt},
+            "assets": {"image_file_paths": [item["file_path"]]}
+        }
+
+        response = api_request(
+            API + "/v1/ai-image-editor",
+            "POST",
+            json.dumps(payload).encode(),
+            {
+                "Authorization": "Bearer " + KEY,
+                "Content-Type": "application/json"
+            }
         )
 
-        if result.status != "complete":
-            return jsonify({
-                "error": "AI generation failed",
-                "status": result.status,
-                "details": getattr(
-                    result,
-                    "error_message",
-                    None
-                )
-            }), 500
+        project_id = json.loads(response)["id"]
+        status_url = API + "/v1/image-projects/" + project_id
 
-        downloads = getattr(result, "downloads", None)
+        for _ in range(120):
+            response = api_request(
+                status_url,
+                "GET",
+                headers={"Authorization": "Bearer " + KEY}
+            )
 
-        if not downloads:
-            return jsonify({
-                "error": "Generation completed but no image URL was returned"
-            }), 500
+            result = json.loads(response)
+            status = result.get("status")
+            print("STATUS:", status)
 
-        return jsonify({
-            "status": "complete",
-            "image_url": downloads[0].url
-        })
+            if status == "complete":
+                downloads = result.get("downloads", [])
+
+                if not downloads:
+                    return jsonify({"error": "No result image"}), 500
+
+                return jsonify({
+                    "status": "complete",
+                    "image_url": downloads[0]["url"]
+                })
+
+            if status in ("error", "canceled"):
+                return jsonify({
+                    "error": "Generation failed",
+                    "details": result
+                }), 500
+
+            time.sleep(5)
+
+        return jsonify({"error": "Generation timeout"}), 504
 
     except Exception as e:
-        traceback.print_exc()
-
         return jsonify({
-            "error": "RoomAI could not complete the generation",
-            "details": str(e)
+            "error": str(e)
         }), 500
 
     finally:
@@ -133,7 +170,6 @@ def generate():
                 os.remove(image_path)
             except Exception:
                 pass
-
 
 if __name__ == "__main__":
     app.run(
