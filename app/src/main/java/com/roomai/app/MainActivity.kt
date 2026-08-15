@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -114,12 +115,12 @@ fun Home(nav: NavHostController) {
             FeatureCard(
                 "Styles",
                 Icons.Default.Palette
-            ) { nav.navigate("styles") }
+            , Modifier.weight(1f)) { nav.navigate("styles") }
 
             FeatureCard(
                 "Enhance",
                 Icons.Default.AutoFixHigh
-            ) { nav.navigate("enhance") }
+            , Modifier.weight(1f)) { nav.navigate("enhance") }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -131,12 +132,12 @@ fun Home(nav: NavHostController) {
             FeatureCard(
                 "Furniture",
                 Icons.Default.Chair
-            ) { nav.navigate("furniture") }
+            , Modifier.weight(1f)) { nav.navigate("furniture") }
 
             FeatureCard(
                 "Products",
                 Icons.Default.ShoppingBag
-            ) { nav.navigate("products") }
+            , Modifier.weight(1f)) { nav.navigate("products") }
         }
     }
 }
@@ -145,13 +146,12 @@ fun Home(nav: NavHostController) {
 fun FeatureCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ElevatedCard(
         onClick = onClick,
-        modifier = Modifier
-            .weight(1f)
-            .height(120.dp)
+        modifier = modifier.height(120.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
             Icon(icon, null)
