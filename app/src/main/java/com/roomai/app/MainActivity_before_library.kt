@@ -940,118 +940,286 @@ fun deleteDesign(
 
 @Composable
 fun Designs() {
-    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val context = LocalContext.current
+
+    var designs by remember {
+        mutableStateOf(
+            loadDesigns(context)
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement =
+            Arrangement.spacedBy(16.dp)
     ) {
+
         item {
+
             Text(
                 "My Designs",
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold
             )
 
-            Spacer(Modifier.height(6.dp))
-
             Text(
-                "Your generated interior designs will appear here."
+                "Your AI interior designs"
             )
         }
 
-        item {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp)
+        if (designs.isEmpty()) {
+
+            item {
+
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp)
                 ) {
-                    Icon(
-                        Icons.Default.PhotoLibrary,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp)
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        "Your design library",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        "Generate designs from the Create page. " +
-                        "Your future AI results will be displayed here."
-                    )
-
-                    Spacer(Modifier.height(18.dp))
-
-                    Button(
-                        onClick = {},
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, null)
-
-                        Spacer(Modifier.width(8.dp))
-
-                        Text("Create Design")
-                    }
-                }
-            }
-        }
-
-        item {
-            Text(
-                "RoomAI Library",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        items(
-            listOf(
-                "Living Room" to "Modern",
-                "Bedroom" to "Minimalist",
-                "Kitchen" to "Luxury"
-            )
-        ) { design ->
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        modifier = Modifier.size(36.dp)
-                    )
-
-                    Spacer(Modifier.width(16.dp))
 
                     Column(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment =
+                            Alignment.CenterHorizontally
                     ) {
+
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp)
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
                         Text(
-                            design.first,
-                            style = MaterialTheme.typography.titleMedium,
+                            "No designs yet",
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
-                            design.second,
-                            style = MaterialTheme.typography.bodyMedium
+                            "Create your first AI design."
+                        )
+                    }
+                }
+            }
+
+        } else {
+
+            items(designs) { url ->
+
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+
+                    Column {
+
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "Design",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(280.dp),
+                            contentScale =
+                                ContentScale.Crop
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween
+                        ) {
+
+                            Text(
+                                "AI Interior",
+                                fontWeight =
+                                    FontWeight.Bold
+                            )
+
+                            IconButton(
+                                onClick = {
+
+                                    deleteDesign(
+                                        context,
+                                        url
+                                    )
+
+                                    designs =
+                                        loadDesigns(
+                                            context
+                                        )
+                                }
+                            ) {
+
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription =
+                                        "Delete"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun Styles() {
+
+    FeaturePage(
+        "AI Styles",
+        "Choose an interior style",
+        listOf(
+            "Modern" to Icons.Default.Home,
+            "Minimalist" to Icons.Default.CropSquare,
+            "Luxury" to Icons.Default.Star,
+            "Scandinavian" to Icons.Default.Nature,
+            "Industrial" to Icons.Default.Build,
+            "Classic" to Icons.Default.AutoAwesome,
+            "Bohemian" to Icons.Default.LocalFlorist,
+            "Japandi" to Icons.Default.Spa
+        )
+    )
+}
+
+@Composable
+fun Enhance() {
+
+    FeaturePage(
+        "AI Enhance",
+        "Improve your generated design",
+        listOf(
+            "Improve lighting" to Icons.Default.LightMode,
+            "Increase realism" to Icons.Default.AutoAwesome,
+            "Fix details" to Icons.Default.AutoFixHigh,
+            "Improve colors" to Icons.Default.Palette,
+            "Sharpen image" to Icons.Default.ZoomIn
+        )
+    )
+}
+
+@Composable
+fun Furniture() {
+
+    FeaturePage(
+        "Furniture",
+        "Explore furniture ideas",
+        listOf(
+            "Sofa" to Icons.Default.Home,
+            "Bed" to Icons.Default.BedroomParent,
+            "Table" to Icons.Default.TableBar,
+            "Chair" to Icons.Default.Chair,
+            "Storage" to Icons.Default.Inventory2,
+            "Lighting" to Icons.Default.Light
+        )
+    )
+}
+
+@Composable
+fun Products() {
+
+    FeaturePage(
+        "Products",
+        "Discover products for your interiors",
+        listOf(
+            "Sofas" to Icons.Default.Home,
+            "Beds" to Icons.Default.BedroomParent,
+            "Tables" to Icons.Default.TableBar,
+            "Chairs" to Icons.Default.Chair,
+            "Lighting" to Icons.Default.Light,
+            "Decor" to Icons.Default.LocalFlorist
+        )
+    )
+}
+
+@Composable
+fun FeaturePage(
+    title: String,
+    subtitle: String,
+    options: List<
+            Pair<
+                    String,
+                    androidx.compose.ui.graphics.vector.ImageVector
+                    >
+            >
+) {
+
+    var selected by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp),
+        verticalArrangement =
+            Arrangement.spacedBy(12.dp)
+    ) {
+
+        item {
+
+            Text(
+                title,
+                style =
+                    MaterialTheme.typography.headlineLarge,
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+            Text(subtitle)
+        }
+
+        items(options) { option ->
+
+            ElevatedCard(
+                onClick = {
+                    selected = option.first
+                },
+                modifier =
+                    Modifier.fillMaxWidth(),
+                shape =
+                    RoundedCornerShape(20.dp)
+            ) {
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
+
+                    Icon(
+                        option.second,
+                        contentDescription =
+                            option.first,
+                        modifier =
+                            Modifier.size(32.dp)
+                    )
+
+                    Spacer(
+                        Modifier.width(16.dp)
+                    )
+
+                    Column(
+                        modifier =
+                            Modifier.weight(1f)
+                    ) {
+
+                        Text(
+                            option.first,
+                            fontWeight =
+                                FontWeight.SemiBold
+                        )
+
+                        Text(
+                            "Select this option"
                         )
                     }
 
@@ -1060,6 +1228,18 @@ fun Designs() {
                         contentDescription = null
                     )
                 }
+            }
+        }
+
+        item {
+
+            selected?.let {
+
+                Text(
+                    "Selected: $it",
+                    fontWeight =
+                        FontWeight.Bold
+                )
             }
         }
     }
