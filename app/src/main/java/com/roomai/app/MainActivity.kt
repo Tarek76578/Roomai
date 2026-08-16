@@ -643,6 +643,15 @@ fun Create() {
                                 room,
                                 style
                             )
+
+                            RoomAIHistory.add(
+                                context = context,
+                                generatedUrl = url,
+                                room = room,
+                                style = style,
+                                prompt = prompt,
+                                originalUrl = imageUri?.toString()
+                            )
                         } catch (e: Exception) {
                             error =
                                 e.message ?: "Generation failed"
@@ -1154,161 +1163,160 @@ fun shareDesign(
 @Composable
 fun Designs() {
     val context = LocalContext.current
-
-    var designs by remember {
-        mutableStateOf(loadDesigns(context))
+    var versions by remember {
+        mutableStateOf(RoomAIHistory.load(context))
     }
 
-    var preview by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    preview?.let { url ->
-        AlertDialog(
-            onDismissRequest = {
-                preview = null
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        shareDesign(context, url)
-                    }
-                ) {
-                    Text("Share")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        preview = null
-                    }
-                ) {
-                    Text("Close")
-                }
-            },
-            title = {
-                Text("RoomAI Design")
-            },
-            text = {
-                AsyncImage(
-                    model = url,
-                    contentDescription = "Preview",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(330.dp),
-                    contentScale = ContentScale.Crop
-                )
-            }
-        )
-    }
-
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(20.dp)
     ) {
-        item {
-            Text(
-                "My Designs",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
+        Text(
+            "History / Versions",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
 
-            Text(
-                "${designs.size} saved design" +
-                        if (designs.size == 1) "" else "s"
-            )
-        }
+        Spacer(Modifier.height(6.dp))
 
-        if (designs.isEmpty()) {
-            item {
-                EmptyLibrary()
+        Text(
+            "Your generated designs and previous versions stay available on this device."
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        if (versions.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.PhotoLibrary,
+                        contentDescription = null,
+                        modifier = Modifier.size(54.dp)
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Text(
+                        "No versions yet",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text("Generate a design to create your first version.")
+                }
             }
         } else {
-            items(
-                designs,
-                key = { it.id }
-            ) { design ->
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                items(
+                    items = versions,
+                    key = { it.id }
+                ) { version ->
 
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp)
-                ) {
-                    Column {
-                        AsyncImage(
-                            model = design.url,
-                            contentDescription = "Saved design",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(270.dp),
-                            contentScale = ContentScale.Crop
-                        )
-
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp)
+                    ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(14.dp)
                         ) {
-                            Text(
-                                design.style,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
+                            AsyncImage(
+                                model = version.generatedUrl,
+                                contentDescription = "Generated version",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(240.dp)
+                                    .clip(RoundedCornerShape(16.dp)),
+                                contentScale = ContentScale.Crop
                             )
 
-                            Text(design.room)
-
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(10.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement =
-                                    Arrangement.spacedBy(8.dp)
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Button(
-                                    onClick = {
-                                        preview = design.url
-                                    },
+                                Column(
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(
-                                        Icons.Default.Fullscreen,
-                                        null
+                                    Text(
+                                        "${version.room} • ${version.style}",
+                                        fontWeight = FontWeight.Bold
                                     )
-                                    Spacer(Modifier.width(5.dp))
-                                    Text("View")
-                                }
 
-                                OutlinedButton(
-                                    onClick = {
-                                        shareDesign(
-                                            context,
-                                            design.url
-                                        )
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Share,
-                                        null
+                                    Text(
+                                        "Version ${version.id.take(8)}"
                                     )
-                                    Spacer(Modifier.width(5.dp))
-                                    Text("Share")
+
+                                    if (version.parentId != null) {
+                                        Text(
+                                            "Derived from previous version",
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
 
                                 IconButton(
                                     onClick = {
-                                        deleteDesign(
+                                        RoomAIHistory.delete(
                                             context,
-                                            design.id
+                                            version.id
                                         )
-                                        designs =
-                                            loadDesigns(context)
+                                        versions =
+                                            RoomAIHistory.load(context)
                                     }
                                 ) {
                                     Icon(
                                         Icons.Default.Delete,
-                                        "Delete"
+                                        contentDescription = "Delete version"
                                     )
                                 }
+                            }
+
+                            if (version.prompt.isNotBlank()) {
+                                Spacer(Modifier.height(6.dp))
+
+                                Text(
+                                    version.prompt,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Row(
+                                horizontalArrangement =
+                                    Arrangement.spacedBy(8.dp)
+                            ) {
+                                version.originalUrl?.let { original ->
+                                    AssistChip(
+                                        onClick = {},
+                                        label = { Text("Original available") },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Compare,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                }
+
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text("Generated") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.AutoAwesome,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
                             }
                         }
                     }
