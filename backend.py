@@ -4,6 +4,7 @@ import os
 import tempfile
 import time
 import urllib.request
+import urllib.error
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -21,8 +22,19 @@ def api_request(url, method="GET", data=None, headers=None):
         headers=headers or {},
         method=method
     )
-    with urllib.request.urlopen(req, timeout=90) as r:
-        return r.read()
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            return r.read()
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            "HTTP %s from %s: %s"
+            % (e.code, url.split("?")[0], body)
+        )
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            "Network error: %s" % e
+        )
 
 
 def run_editor(image_path, ext, prompt):
@@ -136,6 +148,24 @@ def run_editor(image_path, ext, prompt):
     raise TimeoutError(
         "Generation timeout"
     )
+
+
+def check_gemini_models():
+    if not GEMINI_KEY:
+        raise RuntimeError("GEMINI_API_KEY missing")
+
+    url = "https://generativelanguage.googleapis.com/v1beta/models"
+
+    response = api_request(
+        url,
+        "GET",
+        None,
+        {
+            "x-goog-api-key": GEMINI_KEY
+        }
+    )
+
+    return json.loads(response)
 
 
 def diagnose_with_gemini(image_path, mime_type):
@@ -478,6 +508,14 @@ def debug_gemini():
         "gemini_key_present": bool(os.environ.get("GEMINI_API_KEY")),
         "gemini_model": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     }
+
+@app.get("/gemini-models")
+def gemini_models_route():
+    try:
+        return jsonify(check_gemini_models())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.post("/diagnose")
 def diagnose_route():
