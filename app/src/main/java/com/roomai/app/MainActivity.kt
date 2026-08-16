@@ -136,6 +136,10 @@ fun RoomAIApp(
                 RoomAIWorkspace(nav)
             }
 
+            composable("decision_engine") {
+                RoomAIDecisionEngine()
+            }
+
             composable("precision") {
                 RoomAIPrecision()
             }
@@ -383,6 +387,27 @@ fun FeatureGrid(nav: NavHostController) {
                 Modifier.weight(1f)
             ) {
                 nav.navigate("diagnose")
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SmallFeature(
+                "Decision Engine",
+                Icons.Default.Psychology,
+                Modifier.weight(1f)
+            ) {
+                nav.navigate("decision_engine")
+            }
+
+            SmallFeature(
+                "Room Memory",
+                Icons.Default.Lock,
+                Modifier.weight(1f)
+            ) {
+                nav.navigate("room_memory")
             }
         }
     }
