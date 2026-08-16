@@ -1,4 +1,7 @@
 package com.roomai.app
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.consume
+import androidx.compose.ui.input.pointer.pointerInput
 
 import androidx.compose.ui.draw.clip
 
@@ -1290,6 +1293,88 @@ data class ToolOption(
 )
 
 
+
+@Composable
+fun BeforeAfterSwipe(
+    before: Uri,
+    after: String,
+    modifier: Modifier = Modifier
+) {
+    var position by remember { mutableFloatStateOf(0.5f) }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(280.dp)
+            .clip(RoundedCornerShape(18.dp))
+    ) {
+        AsyncImage(
+            model = before,
+            contentDescription = "Before",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(position)
+                .clip(RoundedCornerShape(18.dp))
+        ) {
+            AsyncImage(
+                model = after,
+                contentDescription = "After",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(3.dp)
+                .align(Alignment.CenterStart)
+                .offset(x = 0.dp)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        position = (position + dragAmount.x / size.width)
+                            .coerceIn(0.05f, 0.95f)
+                    }
+                }
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        position = (position + dragAmount.x / size.width)
+                            .coerceIn(0.05f, 0.95f)
+                    }
+                }
+        )
+
+        Text(
+            "BEFORE",
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp),
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            "AFTER",
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp),
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 @Composable
 fun Diagnose() {
     val context = LocalContext.current
@@ -1601,14 +1686,9 @@ fun Diagnose() {
 
                                 Spacer(Modifier.height(8.dp))
 
-                                AsyncImage(
-                                    model = fixedResultUrl,
-                                    contentDescription = "Fixed room result",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(250.dp)
-                                        .clip(RoundedCornerShape(16.dp)),
-                                    contentScale = ContentScale.Crop
+                                BeforeAfterSwipe(
+                                    before = imageUri!!,
+                                    after = fixedResultUrl
                                 )
                             }
                         }
