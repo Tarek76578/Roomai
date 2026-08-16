@@ -1881,7 +1881,7 @@ fun RoomAIPowerStudio() {
 
                 item {
                     Text(
-                        "Budget: ${budget.toInt()} DZD",
+                        "Budget: ${budget.toInt()} USD",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -1900,8 +1900,8 @@ fun RoomAIPowerStudio() {
                         horizontalArrangement =
                             Arrangement.SpaceBetween
                     ) {
-                        Text("20K DZD")
-                        Text("1M DZD")
+                        Text("20K USD")
+                        Text("1M USD")
                     }
                 }
 
@@ -1953,7 +1953,7 @@ fun RoomAIPowerStudio() {
                                     SMART BUDGET INTERIOR DESIGN.
 
                                     Maximum budget:
-                                    ${budget.toInt()} DZD
+                                    ${budget.toInt()} USD
 
                                     Preferred style:
                                     $style
@@ -1982,7 +1982,7 @@ fun RoomAIPowerStudio() {
                                     style = style,
                                     userPrompt = prompt,
                                     operation = "budget_design",
-                                    selection = "${budget.toInt()} DZD"
+                                    selection = "${budget.toInt()} USD"
                                 )
 
                                 resultUrl = url
@@ -1990,7 +1990,7 @@ fun RoomAIPowerStudio() {
                                 saveDesign(
                                     context,
                                     url,
-                                    "Budget ${budget.toInt()} DZD",
+                                    "Budget ${budget.toInt()} USD",
                                     style
                                 )
                             } catch (e: Exception) {
@@ -2062,7 +2062,7 @@ fun RoomAIPowerStudio() {
                                 """
                                 Product: $productType
                                 Style: $style
-                                Budget: ${budget.toInt()} DZD
+                                Budget: ${budget.toInt()} USD
                                 Requirements: ${
                                     instruction.ifBlank {
                                         "Not specified"
@@ -2099,7 +2099,7 @@ fun RoomAIPowerStudio() {
                                     $style
 
                                     Target budget:
-                                    ${budget.toInt()} DZD
+                                    ${budget.toInt()} USD
 
                                     Requirements:
                                     ${instruction.ifBlank {
