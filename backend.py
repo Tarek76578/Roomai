@@ -12,7 +12,9 @@ app = Flask(__name__)
 API = "https://api.magichour.ai"
 KEY = os.environ.get("MAGIC_HOUR_API_KEY")
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_KEY_31 = os.environ.get("GEMINI_API_KEY_31")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+GEMINI_MODEL_31 = os.environ.get("GEMINI_MODEL_31", "gemini-3.1-flash-lite")
 
 
 def api_request(url, method="GET", data=None, headers=None):
@@ -244,15 +246,36 @@ Rules:
         + ":generateContent"
     )
 
-    response = api_request(
-        url,
-        "POST",
-        json.dumps(payload).encode(),
-        {
-            "Content-Type": "application/json",
-            "x-goog-api-key": GEMINI_KEY
-        }
-    )
+    try:
+        response = api_request(
+            url,
+            "POST",
+            json.dumps(payload).encode(),
+            {
+                "Content-Type": "application/json",
+                "x-goog-api-key": GEMINI_KEY
+            }
+        )
+    except RuntimeError as e:
+        # Fallback to Gemini 3.1 Flash-Lite when the primary model is unavailable.
+        if "HTTP 503" not in str(e) or not GEMINI_KEY_31:
+            raise
+
+        fallback_url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            + GEMINI_MODEL_31
+            + ":generateContent"
+        )
+
+        response = api_request(
+            fallback_url,
+            "POST",
+            json.dumps(payload).encode(),
+            {
+                "Content-Type": "application/json",
+                "x-goog-api-key": GEMINI_KEY_31
+            }
+        )
 
     result = json.loads(response)
 
