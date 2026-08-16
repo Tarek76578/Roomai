@@ -33,7 +33,9 @@ jobs:
           test -f app/build.gradle
           test -f settings.gradle
           test -f app/src/main/java/com/roomai/app/MainActivity.kt
-          echo "RoomAI project verified"
+          test -f backend.py
+          python3 -m py_compile backend.py
+          echo "RoomAI Android + backend verified"
 
       - name: Build Debug APK
         run: |

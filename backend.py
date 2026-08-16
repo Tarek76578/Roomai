@@ -570,18 +570,6 @@ def generate():
     return process()
 
 
-if __name__ == "__main__":
-
-    app.run(
-        host="0.0.0.0",
-        port=int(
-            os.environ.get(
-                "PORT",
-                "5000"
-            )
-        )
-    )
-
 # ============================================================
 # RoomAI Batch 4 - Real Vision Verification
 # ============================================================
@@ -784,3 +772,10 @@ app.add_url_rule(
     verify,
     methods=["POST"]
 )
+
+
+if __name__ == "__main__":
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "5000"))
+    )
