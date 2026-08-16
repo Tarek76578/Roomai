@@ -469,6 +469,14 @@ def health():
     })
 
 
+
+@app.get("/debug/gemini")
+def debug_gemini():
+    return {
+        "gemini_key_present": bool(os.environ.get("GEMINI_API_KEY")),
+        "gemini_model": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    }
+
 @app.post("/diagnose")
 def diagnose_route():
     return diagnose()
