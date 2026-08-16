@@ -709,8 +709,8 @@ suspend fun generateDesign(
 
         output.write(
             (
-                "Content-Disposition: form-data; "
-                        "name=\"image\"; "
+                "Content-Disposition: form-data; " +
+                        "name=\"image\"; " +
                         "filename=\"room.jpg\"\r\n"
             ).toByteArray()
         )
@@ -807,8 +807,8 @@ suspend fun diagnoseRoom(
 
         output.write(
             (
-                "Content-Disposition: form-data; "
-                        "name=\"image\"; "
+                "Content-Disposition: form-data; " +
+                        "name=\"image\"; " +
                         "filename=\"room.jpg\"\r\n"
             ).toByteArray()
         )
@@ -914,7 +914,7 @@ fun writeTextPart(
 
     output.write(
         (
-            "Content-Disposition: form-data; "
+            "Content-Disposition: form-data; " +
                     "name=\"$name\"\r\n\r\n"
         ).toByteArray()
     )
@@ -1104,7 +1104,7 @@ fun Designs() {
             )
 
             Text(
-                "${designs.size} saved design"
+                "${designs.size} saved design" +
                         if (designs.size == 1) "" else "s"
             )
         }
