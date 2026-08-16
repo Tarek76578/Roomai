@@ -43,6 +43,10 @@ fun RoomAIPrecision() {
         mutableStateOf<String?>(null)
     }
 
+    var verification by remember {
+        mutableStateOf<PrecisionVerification?>(null)
+    }
+
     var loading by remember {
         mutableStateOf(false)
     }
@@ -98,6 +102,7 @@ fun RoomAIPrecision() {
         ) { uri ->
             imageUri = uri
             resultUrl = null
+            verification = null
             error = null
         }
 
@@ -360,52 +365,146 @@ fun RoomAIPrecision() {
                                 updatedState
                             )
 
-                            val prompt =
-                                RoomAIPromptBuilder
-                                    .precisionPrompt(
-                                        selectedObject =
-                                            selectedObject,
-                                        userInstruction =
-                                            instruction,
-                                        structure =
-                                            newStructure,
-                                        constraints =
-                                            updatedState
-                                                .constraints
-                                    )
+                            val protectedElements =
+                                buildList {
+                                    if (wallsLocked &&
+                                        selectedObject != "Walls"
+                                    ) {
+                                        add(
+                                            ProtectedElement(
+                                                name = "Walls",
+                                                reason = "Keep wall structure unchanged"
+                                            )
+                                        )
+                                    }
 
-                            val url =
-                                generateDesign(
-                                    context = context,
-                                    uri = uri,
+                                    if (doorsLocked &&
+                                        selectedObject != "Doors"
+                                    ) {
+                                        add(
+                                            ProtectedElement(
+                                                name = "Doors",
+                                                reason = "Keep doors unchanged"
+                                            )
+                                        )
+                                    }
+
+                                    if (windowsLocked &&
+                                        selectedObject != "Windows"
+                                    ) {
+                                        add(
+                                            ProtectedElement(
+                                                name = "Windows",
+                                                reason = "Keep windows unchanged"
+                                            )
+                                        )
+                                    }
+
+                                    if (floorLocked &&
+                                        selectedObject != "Floor"
+                                    ) {
+                                        add(
+                                            ProtectedElement(
+                                                name = "Floor",
+                                                reason = "Keep floor unchanged"
+                                            )
+                                        )
+                                    }
+
+                                    if (cameraLocked) {
+                                        add(
+                                            ProtectedElement(
+                                                name = "Camera and perspective",
+                                                reason = "Keep camera angle and perspective unchanged"
+                                            )
+                                        )
+                                    }
+
+                                    if (selectedObject != "Lighting") {
+                                        add(
+                                            ProtectedElement(
+                                                name = "Lighting",
+                                                reason = "Do not change lighting unless required by the target"
+                                            )
+                                        )
+                                    }
+                                }
+
+                            val editType =
+                                PrecisionEditType.REPLACE
+
+                            val precisionRequest =
+                                PrecisionRequest(
+                                    target =
+                                        PrecisionTarget(
+                                            name = selectedObject,
+                                            description =
+                                                "Edit only the selected room element: $selectedObject",
+                                            selection =
+                                                selectedObject
+                                        ),
+                                    editType = editType,
+                                    instruction = instruction,
                                     room =
                                         updatedState.roomType,
                                     style =
                                         updatedState.style,
-                                    userPrompt =
-                                        prompt,
-                                    operation =
-                                        "precision_edit",
-                                    selection =
-                                        selectedObject
+                                    protectedElements =
+                                        protectedElements,
+                                    sourceVersionId =
+                                        state.versions
+                                            .lastOrNull()
+                                            ?.id
+                                            ?: "original"
                                 )
 
-                            resultUrl = url
+                            val precisionResult =
+                                RoomAIPrecisionEngine.execute(
+                                    context = context,
+                                    uri = uri,
+                                    request = precisionRequest,
+                                    verify = true
+                                )
+
+                            verification =
+                                precisionResult
+                                    .version
+                                    .verification
+
+                            resultUrl =
+                                precisionResult
+                                    .version
+                                    .imageUrl
+
+                            if (!precisionResult.accepted) {
+                                throw Exception(
+                                    "Precision verification failed after " +
+                                        "${precisionResult.attempts} attempts. " +
+                                        precisionResult
+                                            .version
+                                            .verification
+                                            .message
+                                )
+                            }
 
                             state =
                                 RoomAIProjectStore
                                     .addVersion(
                                         context,
                                         updatedState,
-                                        url,
-                                        "Edit $selectedObject",
-                                        "precision_edit"
+                                        precisionResult
+                                            .version
+                                            .imageUrl,
+                                        "Verified edit: $selectedObject",
+                                        "precision_edit_verified"
                                     )
 
                             saveDesign(
                                 context,
-                                url,
-                                "Precision Edit",
+                                precisionResult
+                                    .version
+                                    .imageUrl,
+                                "Verified Precision Edit",
                                 selectedObject
                             )
 
@@ -562,6 +661,94 @@ fun RoomAIPrecision() {
 
                             Text("Share")
                         }
+                    }
+                }
+            }
+        }
+
+        verification?.let { result ->
+
+            item {
+                ElevatedCard(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    shape =
+                        RoundedCornerShape(20.dp)
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(18.dp)
+                    ) {
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            verticalAlignment =
+                                androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (result.status ==
+                                    VerificationStatus.PASS
+                                ) {
+                                    Icons.Default.Verified
+                                } else {
+                                    Icons.Default.Warning
+                                },
+                                contentDescription = null
+                            )
+
+                            Spacer(
+                                Modifier.width(10.dp)
+                            )
+
+                            Column(
+                                modifier =
+                                    Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    if (result.status ==
+                                        VerificationStatus.PASS
+                                    ) {
+                                        "Vision Verified"
+                                    } else {
+                                        "Verification Failed"
+                                    },
+                                    fontWeight =
+                                        FontWeight.Bold
+                                )
+
+                                Text(
+                                    "Score: ${result.score}/100"
+                                )
+                            }
+                        }
+
+                        Spacer(
+                            Modifier.height(8.dp)
+                        )
+
+                        Text(
+                            result.message
+                        )
+
+                        Spacer(
+                            Modifier.height(8.dp)
+                        )
+
+                        Text(
+                            "Target changed: ${result.targetChanged}"
+                        )
+
+                        Text(
+                            "Protected elements changed: ${result.protectedElementsChanged}"
+                        )
+
+                        Text(
+                            "Architecture changed: ${result.architectureChanged}"
+                        )
+
+                        Text(
+                            "Camera changed: ${result.cameraChanged}"
+                        )
                     }
                 }
             }
