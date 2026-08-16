@@ -727,6 +727,8 @@ suspend fun generateDesign(
 
     val code = connection.responseCode
 
+    Log.d("RoomAI", "DIAGNOSE: HTTP $code")
+
     val stream =
         if (code in 200..299)
             connection.inputStream
@@ -779,6 +781,8 @@ suspend fun diagnoseRoom(
 ): RoomDiagnosis = withContext(Dispatchers.IO) {
 
     val boundary = "RoomAI-Diagnose-${UUID.randomUUID()}"
+
+    Log.d("RoomAI", "DIAGNOSE: starting request")
 
     val connection =
         URL(DIAGNOSE_URL).openConnection() as HttpURLConnection
@@ -834,6 +838,8 @@ suspend fun diagnoseRoom(
     val response =
         stream?.bufferedReader()?.use { it.readText() }
             ?: throw Exception("Empty diagnosis response")
+
+    Log.d("RoomAI", "DIAGNOSE: response received")
 
     if (code !in 200..299) {
         throw Exception(response)
