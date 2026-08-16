@@ -133,6 +133,18 @@ fun RoomAIApp(
             }
 
             composable("ai_studio") {
+                RoomAIWorkspace(nav)
+            }
+
+            composable("precision") {
+                RoomAIPrecision()
+            }
+
+            composable("room_memory") {
+                RoomAIMemory()
+            }
+
+            composable("legacy_ai_studio") {
                 RoomAIPowerStudio()
             }
 
