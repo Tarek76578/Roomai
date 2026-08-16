@@ -211,15 +211,17 @@ Rules:
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
         + GEMINI_MODEL
-        + ":generateContent?key="
-        + GEMINI_KEY
+        + ":generateContent"
     )
 
     response = api_request(
         url,
         "POST",
         json.dumps(payload).encode(),
-        {"Content-Type": "application/json"}
+        {
+            "Content-Type": "application/json",
+            "x-goog-api-key": GEMINI_KEY
+        }
     )
 
     result = json.loads(response)
