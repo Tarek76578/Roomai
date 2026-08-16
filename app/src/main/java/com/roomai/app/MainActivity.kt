@@ -132,6 +132,10 @@ fun RoomAIApp(
                 Products()
             }
 
+            composable("ai_studio") {
+                RoomAIPowerStudio()
+            }
+
             composable("diagnose") {
                 Diagnose()
             }
@@ -344,6 +348,29 @@ fun FeatureGrid(nav: NavHostController) {
                 Modifier.weight(1f)
             ) {
                 nav.navigate("products")
+            }
+        }
+
+        Spacer(Modifier.height(2.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SmallFeature(
+                "AI Studio",
+                Icons.Default.AutoAwesome,
+                Modifier.weight(1f)
+            ) {
+                nav.navigate("ai_studio")
+            }
+
+            SmallFeature(
+                "Diagnose",
+                Icons.Default.Search,
+                Modifier.weight(1f)
+            ) {
+                nav.navigate("diagnose")
             }
         }
     }
@@ -1371,6 +1398,1237 @@ fun BeforeAfterSwipe(
         )
     }
 }
+
+
+private enum class RoomAIStudioMode(
+    val title: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    PRECISION("Precision", Icons.Default.AutoFixHigh),
+    BUDGET("Budget", Icons.Default.AttachMoney),
+    PRODUCTS("Products", Icons.Default.ShoppingBag),
+    SELLER("Seller", Icons.Default.Storefront),
+    REALITY("Reality", Icons.Default.CheckCircle),
+    REDESIGN("Redesign", Icons.Default.AutoAwesome)
+}
+
+@Composable
+fun RoomAIPowerStudio() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var mode by remember {
+        mutableStateOf(RoomAIStudioMode.PRECISION)
+    }
+
+    var selectedObject by remember {
+        mutableStateOf("Sofa")
+    }
+
+    var instruction by remember {
+        mutableStateOf("")
+    }
+
+    var budget by remember {
+        mutableFloatStateOf(100000f)
+    }
+
+    var productType by remember {
+        mutableStateOf("Sofa")
+    }
+
+    var style by remember {
+        mutableStateOf("Modern")
+    }
+
+    var resultUrl by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var diagnosis by remember {
+        mutableStateOf<RoomDiagnosis?>(null)
+    }
+
+    var loading by remember {
+        mutableStateOf(false)
+    }
+
+    var error by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    val picker =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.PickVisualMedia()
+        ) { uri ->
+            imageUri = uri
+            resultUrl = null
+            diagnosis = null
+            error = null
+        }
+
+    val objects = listOf(
+        "Sofa",
+        "Chair",
+        "Table",
+        "Bed",
+        "Wardrobe",
+        "Rug",
+        "Curtains",
+        "Walls",
+        "Floor",
+        "Lighting",
+        "Decor",
+        "Plants"
+    )
+
+    val styles = listOf(
+        "Modern",
+        "Minimalist",
+        "Luxury",
+        "Scandinavian",
+        "Industrial",
+        "Classic",
+        "Bohemian",
+        "Japandi"
+    )
+
+    val productTypes = listOf(
+        "Sofa",
+        "Bed",
+        "Chair",
+        "Table",
+        "Wardrobe",
+        "Lighting",
+        "Rug",
+        "Decor"
+    )
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+
+        item {
+            Text(
+                "RoomAI Power Studio",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                "Design • Edit • Diagnose • Budget • Products • Business"
+            )
+        }
+
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp)
+                ) {
+                    Text(
+                        "One room. Six AI workflows.",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        "RoomAI is not only a room generator. Use the studio to make decisions about the real room."
+                    )
+                }
+            }
+        }
+
+        item {
+            if (imageUri == null) {
+                OutlinedCard(
+                    onClick = {
+                        picker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(210.dp),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.AddAPhoto,
+                            null,
+                            modifier = Modifier.size(48.dp)
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        Text(
+                            "Add Room / Product Photo",
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            "Use a clear image for better AI control."
+                        )
+                    }
+                }
+            } else {
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = "Selected image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp)
+                        .clip(RoundedCornerShape(22.dp)),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        picker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.PhotoCamera,
+                        null
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Text("Change Image")
+                }
+            }
+        }
+
+        item {
+            Text(
+                "AI Mode",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(RoomAIStudioMode.values().toList()) { item ->
+                    FilterChip(
+                        selected = mode == item,
+                        onClick = {
+                            mode = item
+                            resultUrl = null
+                            diagnosis = null
+                            error = null
+                        },
+                        label = {
+                            Text(item.title)
+                        },
+                        leadingIcon = {
+                            Icon(
+                                item.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        when (mode) {
+
+            RoomAIStudioMode.PRECISION -> {
+
+                item {
+                    StudioSectionTitle(
+                        "Precision Edit",
+                        "Change one thing while explicitly protecting everything else."
+                    )
+                }
+
+                item {
+                    StudioChipRow(
+                        values = objects,
+                        selected = selectedObject,
+                        onSelected = {
+                            selectedObject = it
+                        }
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = instruction,
+                        onValueChange = {
+                            instruction = it
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("What should change?")
+                        },
+                        placeholder = {
+                            Text(
+                                "Example: replace it with a beige modern sofa."
+                            )
+                        },
+                        minLines = 3
+                    )
+                }
+
+                item {
+                    StudioActionButton(
+                        enabled = imageUri != null && !loading,
+                        loading = loading,
+                        text = "Change Only $selectedObject"
+                    ) {
+                        val uri = imageUri ?: return@StudioActionButton
+
+                        scope.launch {
+                            loading = true
+                            error = null
+                            resultUrl = null
+
+                            try {
+                                val prompt =
+                                    """
+                                    PRECISION EDIT MODE.
+
+                                    Target object:
+                                    $selectedObject
+
+                                    User request:
+                                    ${instruction.ifBlank {
+                                        "Improve this selected object while keeping its role and position."
+                                    }}
+
+                                    HARD PRESERVATION RULES:
+                                    - Change ONLY the selected object.
+                                    - Preserve all walls.
+                                    - Preserve doors.
+                                    - Preserve windows.
+                                    - Preserve floor.
+                                    - Preserve ceiling.
+                                    - Preserve camera angle.
+                                    - Preserve perspective.
+                                    - Preserve lighting direction.
+                                    - Preserve every unrelated object.
+                                    - Do not redesign the whole room.
+                                    - Do not move unrelated furniture.
+                                    - Do not invent architectural changes.
+                                    - Keep the result photorealistic.
+                                    """.trimIndent()
+
+                                val url = generateDesign(
+                                    context = context,
+                                    uri = uri,
+                                    room = "Existing Room",
+                                    style = style,
+                                    userPrompt = prompt,
+                                    operation = "precision_edit",
+                                    selection = selectedObject
+                                )
+
+                                resultUrl = url
+
+                                saveDesign(
+                                    context,
+                                    url,
+                                    "Precision Edit",
+                                    selectedObject
+                                )
+                            } catch (e: Exception) {
+                                error =
+                                    e.message
+                                        ?: "Precision edit failed"
+                            } finally {
+                                loading = false
+                            }
+                        }
+                    }
+                }
+            }
+
+            RoomAIStudioMode.BUDGET -> {
+
+                item {
+                    StudioSectionTitle(
+                        "Smart Budget",
+                        "Tell RoomAI how much you want to spend."
+                    )
+                }
+
+                item {
+                    Text(
+                        "Budget: ${budget.toInt()} DZD",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Slider(
+                        value = budget,
+                        onValueChange = {
+                            budget = it
+                        },
+                        valueRange = 20000f..1000000f,
+                        steps = 19
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween
+                    ) {
+                        Text("20K DZD")
+                        Text("1M DZD")
+                    }
+                }
+
+                item {
+                    StudioChipRow(
+                        values = styles,
+                        selected = style,
+                        onSelected = {
+                            style = it
+                        }
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = instruction,
+                        onValueChange = {
+                            instruction = it
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Budget instructions")
+                        },
+                        placeholder = {
+                            Text(
+                                "Example: prioritize sofa and lighting."
+                            )
+                        },
+                        minLines = 3
+                    )
+                }
+
+                item {
+                    StudioActionButton(
+                        enabled = imageUri != null && !loading,
+                        loading = loading,
+                        text = "Design Within Budget"
+                    ) {
+                        val uri = imageUri ?: return@StudioActionButton
+
+                        scope.launch {
+                            loading = true
+                            error = null
+                            resultUrl = null
+
+                            try {
+                                val prompt =
+                                    """
+                                    SMART BUDGET INTERIOR DESIGN.
+
+                                    Maximum budget:
+                                    ${budget.toInt()} DZD
+
+                                    Preferred style:
+                                    $style
+
+                                    User priorities:
+                                    ${instruction.ifBlank {
+                                        "Use the budget intelligently and prioritize the most visible improvements."
+                                    }}
+
+                                    IMPORTANT:
+                                    - Keep the existing room architecture.
+                                    - Do not change doors or windows.
+                                    - Do not create unrealistic luxury items.
+                                    - Prefer practical furniture.
+                                    - Optimize visual impact per unit of budget.
+                                    - Clearly prioritize what should be replaced,
+                                      kept or upgraded.
+                                    - Do not claim exact market prices from the image.
+                                    - Treat the budget as a design constraint.
+                                    """.trimIndent()
+
+                                val url = generateDesign(
+                                    context = context,
+                                    uri = uri,
+                                    room = "Existing Room",
+                                    style = style,
+                                    userPrompt = prompt,
+                                    operation = "budget_design",
+                                    selection = "${budget.toInt()} DZD"
+                                )
+
+                                resultUrl = url
+
+                                saveDesign(
+                                    context,
+                                    url,
+                                    "Budget ${budget.toInt()} DZD",
+                                    style
+                                )
+                            } catch (e: Exception) {
+                                error =
+                                    e.message
+                                        ?: "Budget design failed"
+                            } finally {
+                                loading = false
+                            }
+                        }
+                    }
+                }
+            }
+
+            RoomAIStudioMode.PRODUCTS -> {
+
+                item {
+                    StudioSectionTitle(
+                        "Product Match",
+                        "Turn the room into a product specification."
+                    )
+                }
+
+                item {
+                    StudioChipRow(
+                        values = productTypes,
+                        selected = productType,
+                        onSelected = {
+                            productType = it
+                        }
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = instruction,
+                        onValueChange = {
+                            instruction = it
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Product requirements")
+                        },
+                        placeholder = {
+                            Text(
+                                "Example: beige, 3 seats, modern, compact."
+                            )
+                        },
+                        minLines = 3
+                    )
+                }
+
+                item {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp)
+                        ) {
+                            Text(
+                                "Product Brief",
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                """
+                                Product: $productType
+                                Style: $style
+                                Budget: ${budget.toInt()} DZD
+                                Requirements: ${
+                                    instruction.ifBlank {
+                                        "Not specified"
+                                    }
+                                }
+                                """.trimIndent()
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    StudioActionButton(
+                        enabled = imageUri != null && !loading,
+                        loading = loading,
+                        text = "Visualize Product"
+                    ) {
+                        val uri = imageUri ?: return@StudioActionButton
+
+                        scope.launch {
+                            loading = true
+                            error = null
+                            resultUrl = null
+
+                            try {
+                                val prompt =
+                                    """
+                                    PRODUCT MATCH / VISUALIZATION.
+
+                                    Product:
+                                    $productType
+
+                                    Preferred style:
+                                    $style
+
+                                    Target budget:
+                                    ${budget.toInt()} DZD
+
+                                    Requirements:
+                                    ${instruction.ifBlank {
+                                        "Choose a practical option that fits the room."
+                                    }}
+
+                                    Place or visualize the requested product
+                                    naturally in the existing room.
+
+                                    Preserve the room architecture.
+                                    Preserve windows, doors and floor.
+                                    Match perspective and lighting.
+                                    Do not redesign unrelated areas.
+                                    The result should help the user decide
+                                    whether this product category fits the room.
+                                    """.trimIndent()
+
+                                val url = generateDesign(
+                                    context = context,
+                                    uri = uri,
+                                    room = "Existing Room",
+                                    style = style,
+                                    userPrompt = prompt,
+                                    operation = "product_match",
+                                    selection = productType
+                                )
+
+                                resultUrl = url
+
+                                saveDesign(
+                                    context,
+                                    url,
+                                    "Product Match",
+                                    productType
+                                )
+                            } catch (e: Exception) {
+                                error =
+                                    e.message
+                                        ?: "Product visualization failed"
+                            } finally {
+                                loading = false
+                            }
+                        }
+                    }
+                }
+            }
+
+            RoomAIStudioMode.SELLER -> {
+
+                item {
+                    StudioSectionTitle(
+                        "Seller Studio",
+                        "Turn one furniture product photo into marketing scenes."
+                    )
+                }
+
+                item {
+                    StudioChipRow(
+                        values = productTypes,
+                        selected = productType,
+                        onSelected = {
+                            productType = it
+                        }
+                    )
+                }
+
+                item {
+                    StudioChipRow(
+                        values = styles,
+                        selected = style,
+                        onSelected = {
+                            style = it
+                        }
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = instruction,
+                        onValueChange = {
+                            instruction = it
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Seller instructions")
+                        },
+                        placeholder = {
+                            Text(
+                                "Example: premium showroom scene for Instagram."
+                            )
+                        },
+                        minLines = 3
+                    )
+                }
+
+                item {
+                    StudioActionButton(
+                        enabled = imageUri != null && !loading,
+                        loading = loading,
+                        text = "Create Product Scene"
+                    ) {
+                        val uri = imageUri ?: return@StudioActionButton
+
+                        scope.launch {
+                            loading = true
+                            error = null
+                            resultUrl = null
+
+                            try {
+                                val prompt =
+                                    """
+                                    SELLER PRODUCT MARKETING MODE.
+
+                                    Product type:
+                                    $productType
+
+                                    Style:
+                                    $style
+
+                                    Seller request:
+                                    ${instruction.ifBlank {
+                                        "Create a premium realistic interior scene."
+                                    }}
+
+                                    IMPORTANT:
+                                    - The uploaded product is the hero product.
+                                    - Preserve its recognizable design.
+                                    - Do not change its core shape or identity.
+                                    - Place it naturally inside a realistic room.
+                                    - Use professional product photography quality.
+                                    - Make the image suitable for social media,
+                                      ecommerce and furniture advertising.
+                                    - Do not add fake brand logos.
+                                    - Do not invent exact product specifications.
+                                    """.trimIndent()
+
+                                val url = generateDesign(
+                                    context = context,
+                                    uri = uri,
+                                    room = "Furniture Marketing Scene",
+                                    style = style,
+                                    userPrompt = prompt,
+                                    operation = "seller_scene",
+                                    selection = productType
+                                )
+
+                                resultUrl = url
+
+                                saveDesign(
+                                    context,
+                                    url,
+                                    "Seller Scene",
+                                    productType
+                                )
+                            } catch (e: Exception) {
+                                error =
+                                    e.message
+                                        ?: "Seller scene failed"
+                            } finally {
+                                loading = false
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp)
+                        ) {
+                            Text(
+                                "Business direction",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(Modifier.height(6.dp))
+
+                            Text(
+                                "This workflow is designed to become a future paid seller feature: product photo → realistic room scene → marketing content."
+                            )
+                        }
+                    }
+                }
+            }
+
+            RoomAIStudioMode.REALITY -> {
+
+                item {
+                    StudioSectionTitle(
+                        "Reality Check",
+                        "Analyze the room before committing to a design."
+                    )
+                }
+
+                item {
+                    StudioActionButton(
+                        enabled = imageUri != null && !loading,
+                        loading = loading,
+                        text = "Run Reality Check"
+                    ) {
+                        val uri = imageUri ?: return@StudioActionButton
+
+                        scope.launch {
+                            loading = true
+                            error = null
+                            diagnosis = null
+
+                            try {
+                                diagnosis =
+                                    diagnoseRoom(
+                                        context,
+                                        uri
+                                    )
+                            } catch (e: Exception) {
+                                error =
+                                    e.message
+                                        ?: "Reality check failed"
+                            } finally {
+                                loading = false
+                            }
+                        }
+                    }
+                }
+
+                diagnosis?.let { result ->
+
+                    item {
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(22.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(18.dp)
+                            ) {
+                                Text(
+                                    "Reality Score",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                Text(
+                                    "${result.score.coerceIn(0, 100)}/100",
+                                    style = MaterialTheme.typography.displaySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(Modifier.height(6.dp))
+
+                                Text(result.summary)
+                            }
+                        }
+                    }
+
+                    items(
+                        result.risks
+                    ) { risk ->
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    risk.type.ifBlank {
+                                        "Room Risk"
+                                    },
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                Text(
+                                    "Severity: ${
+                                        risk.severity
+                                            .ifBlank { "Review" }
+                                            .uppercase()
+                                    }"
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                Text(risk.message)
+                            }
+                        }
+                    }
+
+                    items(
+                        result.problems
+                    ) { problem ->
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    problem.title,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                Text(
+                                    "Priority: ${
+                                        problem.severity
+                                            .ifBlank { "Review" }
+                                            .uppercase()
+                                    }"
+                                )
+
+                                Spacer(Modifier.height(6.dp))
+
+                                Text(problem.recommendation)
+                            }
+                        }
+                    }
+                }
+            }
+
+            RoomAIStudioMode.REDESIGN -> {
+
+                item {
+                    StudioSectionTitle(
+                        "Directed Redesign",
+                        "Generate a redesign using explicit constraints."
+                    )
+                }
+
+                item {
+                    StudioChipRow(
+                        values = styles,
+                        selected = style,
+                        onSelected = {
+                            style = it
+                        }
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = instruction,
+                        onValueChange = {
+                            instruction = it
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Design brief")
+                        },
+                        placeholder = {
+                            Text(
+                                "Example: keep the floor, make the room brighter and add storage."
+                            )
+                        },
+                        minLines = 4
+                    )
+                }
+
+                item {
+                    StudioActionButton(
+                        enabled = imageUri != null && !loading,
+                        loading = loading,
+                        text = "Generate Directed Redesign"
+                    ) {
+                        val uri = imageUri ?: return@StudioActionButton
+
+                        scope.launch {
+                            loading = true
+                            error = null
+                            resultUrl = null
+
+                            try {
+                                val prompt =
+                                    """
+                                    DIRECTED INTERIOR REDESIGN.
+
+                                    Style:
+                                    $style
+
+                                    User brief:
+                                    ${instruction.ifBlank {
+                                        "Improve the room while keeping its architecture."
+                                    }}
+
+                                    Preserve the actual room structure.
+                                    Preserve doors and windows.
+                                    Preserve floor unless explicitly requested.
+                                    Respect perspective and scale.
+                                    Make furniture placement practical.
+                                    Avoid overcrowding.
+                                    Make the result photorealistic.
+                                    """.trimIndent()
+
+                                val url = generateDesign(
+                                    context = context,
+                                    uri = uri,
+                                    room = "Existing Room",
+                                    style = style,
+                                    userPrompt = prompt,
+                                    operation = "directed_redesign",
+                                    selection = ""
+                                )
+
+                                resultUrl = url
+
+                                saveDesign(
+                                    context,
+                                    url,
+                                    "Directed Redesign",
+                                    style
+                                )
+                            } catch (e: Exception) {
+                                error =
+                                    e.message
+                                        ?: "Redesign failed"
+                            } finally {
+                                loading = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        error?.let { message ->
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            "Something went wrong",
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(Modifier.height(5.dp))
+
+                        Text(
+                            message,
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        Spacer(Modifier.height(5.dp))
+
+                        Text(
+                            "Try again. The room photo was not modified."
+                        )
+                    }
+                }
+            }
+        }
+
+        resultUrl?.let { url ->
+
+            item {
+                Text(
+                    "Result",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "AI result",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(360.dp)
+                                .clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        Text(
+                            "Saved automatically to My Designs.",
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                shareDesign(
+                                    context,
+                                    url
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.Share,
+                                null
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Text("Share Result")
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp)
+                ) {
+                    Text(
+                        "RoomAI Product Loop",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        "Room → Diagnose → Decide → Edit → Budget → Product → Buy"
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        "This is the direction that turns RoomAI from a simple image generator into an interior decision tool."
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudioSectionTitle(
+    title: String,
+    description: String
+) {
+    Column {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        Text(description)
+    }
+}
+
+@Composable
+private fun StudioChipRow(
+    values: List<String>,
+    selected: String,
+    onSelected: (String) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(values) { value ->
+            FilterChip(
+                selected = selected == value,
+                onClick = {
+                    onSelected(value)
+                },
+                label = {
+                    Text(value)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun StudioActionButton(
+    enabled: Boolean,
+    loading: Boolean,
+    text: String,
+    onClick: () -> Unit
+) {
+    Button(
+        enabled = enabled,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp
+            )
+
+            Spacer(Modifier.width(10.dp))
+            Text("AI is working...")
+        } else {
+            Icon(
+                Icons.Default.AutoAwesome,
+                null
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            Text(text)
+        }
+    }
+}
+
 
 @Composable
 fun Diagnose() {
