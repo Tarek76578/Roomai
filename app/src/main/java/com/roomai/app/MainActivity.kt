@@ -1396,6 +1396,32 @@ fun Diagnose() {
         fixedProblemTitle = null
     }
 
+    fun severityRank(value: String): Int {
+        return when (value.trim().lowercase()) {
+            "critical" -> 0
+            "high" -> 1
+            "important" -> 1
+            "medium" -> 2
+            "moderate" -> 2
+            "low" -> 3
+            "minor" -> 3
+            else -> 4
+        }
+    }
+
+    fun severityLabel(value: String): String {
+        return when (value.trim().lowercase()) {
+            "critical" -> "CRITICAL"
+            "high" -> "HIGH"
+            "important" -> "IMPORTANT"
+            "medium" -> "MEDIUM"
+            "moderate" -> "MEDIUM"
+            "low" -> "LOW"
+            "minor" -> "MINOR"
+            else -> value.ifBlank { "REVIEW" }.uppercase()
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -1410,20 +1436,59 @@ fun Diagnose() {
                 fontWeight = FontWeight.Bold
             )
 
+            Spacer(Modifier.height(4.dp))
+
             Text(
-                "Find practical problems before spending money on your room."
+                "Understand what is wrong with your room before changing furniture or spending money."
             )
+        }
+
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(34.dp)
+                    )
+
+                    Spacer(Modifier.width(14.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            "AI Room Analysis",
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            "Layout • lighting • furniture • risks • improvements"
+                        )
+                    }
+                }
+            }
         }
 
         item {
             if (imageUri == null) {
                 OutlinedCard(
                     onClick = {
-                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        picker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(210.dp),
+                        .height(215.dp),
                     shape = RoundedCornerShape(24.dp)
                 ) {
                     Column(
@@ -1444,7 +1509,9 @@ fun Diagnose() {
                             fontWeight = FontWeight.Bold
                         )
 
-                        Text("Use a clear photo of the whole room")
+                        Text(
+                            "Use a clear photo showing the whole room"
+                        )
                     }
                 }
             } else {
@@ -1457,12 +1524,20 @@ fun Diagnose() {
                     contentScale = ContentScale.Crop
                 )
 
+                Spacer(Modifier.height(8.dp))
+
                 OutlinedButton(
                     onClick = {
-                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        picker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    Icon(Icons.Default.PhotoCamera, null)
+                    Spacer(Modifier.width(8.dp))
                     Text("Change Photo")
                 }
             }
@@ -1478,6 +1553,8 @@ fun Diagnose() {
                         loading = true
                         error = null
                         diagnosis = null
+                        fixedResultUrl = null
+                        fixedProblemTitle = null
 
                         try {
                             diagnosis = diagnoseRoom(
@@ -1485,8 +1562,7 @@ fun Diagnose() {
                                 uri
                             )
                         } catch (e: Exception) {
-                            error =
-                                e.message ?: "Diagnosis failed"
+                            error = e.message ?: "Diagnosis failed"
                         } finally {
                             loading = false
                         }
@@ -1502,17 +1578,15 @@ fun Diagnose() {
                     )
 
                     Spacer(Modifier.width(10.dp))
-
                     Text("Analyzing Room...")
                 } else {
                     Icon(
-                        Icons.Default.Search,
+                        Icons.Default.AutoAwesome,
                         contentDescription = null
                     )
 
                     Spacer(Modifier.width(8.dp))
-
-                    Text("Analyze Room")
+                    Text("Analyze My Room")
                 }
             }
         }
@@ -1526,15 +1600,32 @@ fun Diagnose() {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
-                        Text(
-                            "Analysis Error",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.ErrorOutline,
+                                contentDescription = null
+                            )
 
-                        Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.width(8.dp))
 
+                            Text(
+                                "Analysis Error",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(Modifier.height(8.dp))
                         Text(message)
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Text(
+                            "Check your connection and try again.",
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -1542,76 +1633,118 @@ fun Diagnose() {
 
         diagnosis?.let { result ->
 
+            val orderedProblems =
+                result.problems.sortedBy {
+                    severityRank(it.severity)
+                }
+
+            val topProblem = orderedProblems.firstOrNull()
+
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp)
+                    shape = RoundedCornerShape(24.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier.padding(20.dp)
                     ) {
                         Text(
-                            "Room Score",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        Spacer(Modifier.height(8.dp))
-
-                        Text(
-                            "${result.score}/100",
-                            style = MaterialTheme.typography.displaySmall,
+                            "Room Health",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
 
+                        Spacer(Modifier.height(6.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Text(
+                                "${result.score.coerceIn(0, 100)}",
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(Modifier.width(5.dp))
+
+                            Text(
+                                "/100",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+
                         Spacer(Modifier.height(8.dp))
 
                         Text(
-                            result.summary
+                            result.summary.ifBlank {
+                                "RoomAI analyzed the room and found several areas that can be improved."
+                            }
                         )
+
+                        Spacer(Modifier.height(14.dp))
+
+                        val problemCount = orderedProblems.size
+                        val riskCount = result.risks.size
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            DiagnoseMetric(
+                                value = problemCount.toString(),
+                                label = "Problems",
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            DiagnoseMetric(
+                                value = riskCount.toString(),
+                                label = "Risks",
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            DiagnoseMetric(
+                                value = result.upgrade.size.toString(),
+                                label = "Upgrades",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
 
-            if (result.problems.isNotEmpty()) {
+            topProblem?.let { problem ->
                 item {
-                    Text(
-                        "Problems",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                items(result.problems) { problem ->
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(22.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(18.dp)
+                            modifier = Modifier.padding(20.dp)
                         ) {
                             Text(
-                                problem.title,
+                                "Recommended Next Step",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
 
-                            Spacer(Modifier.height(5.dp))
+                            Spacer(Modifier.height(8.dp))
 
                             Text(
-                                "Severity: ${problem.severity.uppercase()}",
+                                problem.title,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
 
                             Spacer(Modifier.height(6.dp))
 
-                            Text(problem.reason)
-
-                            Spacer(Modifier.height(8.dp))
-
                             Text(
-                                "Recommendation: ${problem.recommendation}"
+                                "Priority: ${severityLabel(problem.severity)}",
+                                fontWeight = FontWeight.Bold
                             )
+
+                            Spacer(Modifier.height(6.dp))
+
+                            Text(problem.recommendation)
 
                             Spacer(Modifier.height(12.dp))
 
@@ -1637,12 +1770,13 @@ fun Diagnose() {
                                             saveDesign(
                                                 context,
                                                 url,
-                                                "Living Room",
+                                                "Analyzed Room",
                                                 "Fix: ${problem.title}"
                                             )
                                         } catch (e: Exception) {
                                             error =
-                                                e.message ?: "Could not fix this problem"
+                                                e.message
+                                                    ?: "Could not fix this problem"
                                         } finally {
                                             fixingProblem = null
                                         }
@@ -1658,7 +1792,6 @@ fun Diagnose() {
                                     )
 
                                     Spacer(Modifier.width(8.dp))
-
                                     Text("Fixing...")
                                 } else {
                                     Icon(
@@ -1667,18 +1800,145 @@ fun Diagnose() {
                                     )
 
                                     Spacer(Modifier.width(8.dp))
+                                    Text("Fix Highest Priority Problem")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
+            if (orderedProblems.isNotEmpty()) {
+                item {
+                    Text(
+                        "Priority Problems",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                items(orderedProblems) { problem ->
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    when (severityRank(problem.severity)) {
+                                        0, 1 -> Icons.Default.PriorityHigh
+                                        2 -> Icons.Default.Warning
+                                        else -> Icons.Default.Info
+                                    },
+                                    contentDescription = null
+                                )
+
+                                Spacer(Modifier.width(8.dp))
+
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        problem.title.ifBlank {
+                                            "Room improvement"
+                                        },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Text(
+                                        severityLabel(problem.severity),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(10.dp))
+
+                            Text(problem.reason)
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                "What to do",
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(Modifier.height(4.dp))
+
+                            Text(problem.recommendation)
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Button(
+                                enabled = fixingProblem == null,
+                                onClick = {
+                                    val uri = imageUri ?: return@Button
+
+                                    scope.launch {
+                                        fixingProblem = problem.title
+                                        error = null
+
+                                        try {
+                                            val url = fixRoomProblem(
+                                                context = context,
+                                                uri = uri,
+                                                problem = problem
+                                            )
+
+                                            fixedResultUrl = url
+                                            fixedProblemTitle = problem.title
+
+                                            saveDesign(
+                                                context,
+                                                url,
+                                                "Analyzed Room",
+                                                "Fix: ${problem.title}"
+                                            )
+                                        } catch (e: Exception) {
+                                            error =
+                                                e.message
+                                                    ?: "Could not fix this problem"
+                                        } finally {
+                                            fixingProblem = null
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                if (fixingProblem == problem.title) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Fixing...")
+                                } else {
+                                    Icon(
+                                        Icons.Default.AutoFixHigh,
+                                        contentDescription = null
+                                    )
+
+                                    Spacer(Modifier.width(8.dp))
                                     Text("Fix This Problem")
                                 }
                             }
 
-                            val resultUrl = fixedResultUrl
-
-                            if (fixedProblemTitle == problem.title && resultUrl != null) {
+                            if (
+                                fixedProblemTitle == problem.title &&
+                                fixedResultUrl != null &&
+                                imageUri != null
+                            ) {
                                 Spacer(Modifier.height(14.dp))
 
                                 Text(
-                                    "Fixed Result",
+                                    "Before / After",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1687,9 +1947,40 @@ fun Diagnose() {
 
                                 BeforeAfterSwipe(
                                     before = imageUri!!,
-                                    after = resultUrl
+                                    after = fixedResultUrl!!
                                 )
                             }
+                        }
+                    }
+                }
+            } else {
+                item {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp)
+                            )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                "No major problems detected",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(Modifier.height(6.dp))
+
+                            Text(
+                                "Your room already has a strong foundation. RoomAI can still suggest style and upgrade ideas."
+                            )
                         }
                     }
                 }
@@ -1698,7 +1989,7 @@ fun Diagnose() {
             if (result.risks.isNotEmpty()) {
                 item {
                     Text(
-                        "Risk Scanner",
+                        "Reality & Risk Scanner",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -1712,24 +2003,41 @@ fun Diagnose() {
                         Column(
                             modifier = Modifier.padding(18.dp)
                         ) {
-                            Text(
-                                risk.type.replaceFirstChar {
-                                    it.uppercase()
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null
+                                )
 
-                            Spacer(Modifier.height(5.dp))
+                                Spacer(Modifier.width(8.dp))
+
+                                Text(
+                                    risk.type
+                                        .replaceFirstChar {
+                                            it.uppercase()
+                                        }
+                                        .ifBlank { "Room Risk" },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(Modifier.height(6.dp))
 
                             Text(
-                                "Severity: ${risk.severity.uppercase()}",
+                                "Severity: ${severityLabel(risk.severity)}",
                                 fontWeight = FontWeight.Bold
                             )
 
                             Spacer(Modifier.height(6.dp))
 
-                            Text(risk.message)
+                            Text(
+                                risk.message.ifBlank {
+                                    "RoomAI detected something that should be reviewed."
+                                }
+                            )
                         }
                     }
                 }
@@ -1770,7 +2078,7 @@ fun Diagnose() {
             if (result.lifestyleQuestions.isNotEmpty()) {
                 item {
                     Text(
-                        "Lifestyle Questions",
+                        "Personalization",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -1778,7 +2086,7 @@ fun Diagnose() {
 
                 item {
                     DiagnoseListCard(
-                        title = "Help RoomAI understand your lifestyle",
+                        title = "Questions that can improve future recommendations",
                         icon = Icons.Default.Person,
                         values = result.lifestyleQuestions
                     )
@@ -1790,6 +2098,8 @@ fun Diagnose() {
                     onClick = {
                         diagnosis = null
                         error = null
+                        fixedResultUrl = null
+                        fixedProblemTitle = null
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp)
@@ -1804,6 +2114,33 @@ fun Diagnose() {
                     Text("Analyze Another Room")
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DiagnoseMetric(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                label,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
