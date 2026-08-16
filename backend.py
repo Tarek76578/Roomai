@@ -420,7 +420,26 @@ def process():
             for this {room}.
             Add coordinated furniture, lighting and decor
             products suitable for a {style} interior.
-            Preserve architecture and perspective."""
+            Preserve architecture and perspective.""",
+
+        "fix":
+            f"""Fix ONLY the specific problem identified by the user
+            in this {room}.
+
+            Do not redesign the entire room.
+            Do not change the room style unless absolutely necessary
+            to solve the identified problem.
+
+            Preserve the exact walls, windows, doors, floor,
+            ceiling, architecture, camera angle and perspective.
+
+            Preserve all existing objects that are unrelated to
+            the identified problem.
+
+            Make the correction realistic, practical and
+            professionally designed.
+
+            Problem: {selected}"""
     }
 
     prompt = prompts.get(
@@ -510,6 +529,7 @@ def home():
             "enhance",
             "furniture",
             "products",
+            "fix",
             "diagnose"
         ]
     })

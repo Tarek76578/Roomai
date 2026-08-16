@@ -423,6 +423,8 @@ fun Create() {
     var resultUrl by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var fixingProblem by remember { mutableStateOf<String?>(null) }
+    var fixedResultUrl by remember { mutableStateOf<String?>(null) }
 
     val picker =
         rememberLauncherForActivityResult(
@@ -763,6 +765,37 @@ data class RoomProblem(
     val reason: String,
     val recommendation: String
 )
+
+suspend fun fixRoomProblem(
+    context: Context,
+    uri: Uri,
+    problem: RoomProblem
+): String {
+    val instructions = """
+        Fix this specific room problem.
+
+        Problem: ${problem.title}
+        Severity: ${problem.severity}
+        Reason: ${problem.reason}
+        Recommendation: ${problem.recommendation}
+
+        Make only the changes necessary to solve this problem.
+        Preserve the existing room architecture, walls, doors,
+        windows, floor, ceiling, perspective and camera angle.
+        Preserve unrelated furniture and objects.
+        The result must be photorealistic and practical.
+    """.trimIndent()
+
+    return generateDesign(
+        context = context,
+        uri = uri,
+        room = "Living Room",
+        style = "Modern",
+        userPrompt = instructions,
+        operation = "fix",
+        selection = problem.title
+    )
+}
 
 data class RoomRisk(
     val type: String,
@@ -1266,6 +1299,9 @@ fun Diagnose() {
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    var fixingProblem by remember { mutableStateOf<String?>(null) }
+    var fixedResultUrl by remember { mutableStateOf<String?>(null) }
+
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -1490,6 +1526,65 @@ fun Diagnose() {
                             Text(
                                 "Recommendation: ${problem.recommendation}"
                             )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Button(
+                                enabled = fixingProblem == null,
+                                onClick = {
+                                    val uri = imageUri ?: return@Button
+
+                                    scope.launch {
+                                        fixingProblem = problem.title
+                                        error = null
+                                        fixedResultUrl = null
+
+                                        try {
+                                            val url = fixRoomProblem(
+                                                context = context,
+                                                uri = uri,
+                                                problem = problem
+                                            )
+
+                                            fixedResultUrl = url
+
+                                            saveDesign(
+                                                context,
+                                                url,
+                                                "Living Room",
+                                                "Fix: ${problem.title}"
+                                            )
+                                        } catch (e: Exception) {
+                                            error =
+                                                e.message ?: "Could not fix this problem"
+                                        } finally {
+                                            fixingProblem = null
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                if (fixingProblem == problem.title) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+
+                                    Spacer(Modifier.width(8.dp))
+
+                                    Text("Fixing...")
+                                } else {
+                                    Icon(
+                                        Icons.Default.AutoFixHigh,
+                                        contentDescription = null
+                                    )
+
+                                    Spacer(Modifier.width(8.dp))
+
+                                    Text("Fix This Problem")
+                                }
+                            }
                         }
                     }
                 }
