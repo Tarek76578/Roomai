@@ -581,7 +581,27 @@ def download_image(url):
         raise RuntimeError("Could not download generated image: %s" % e)
 
 
-def verify_with_gemini(original_bytes, generated_bytes, mime_type, request_data):
+
+def detect_image_mime(data):
+    if not data:
+        return "image/jpeg"
+
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+
+    if data.startswith(b"RIFF") and len(data) >= 12 and data[8:12] == b"WEBP":
+        return "image/webp"
+
+    if data.startswith(b"GIF87a") or data.startswith(b"GIF89a"):
+        return "image/gif"
+
+    return "image/jpeg"
+
+
+def verify_with_gemini(original_bytes, generated_bytes, original_mime, generated_mime, request_data):
     if not GEMINI_KEY:
         raise RuntimeError("GEMINI_API_KEY missing")
 
@@ -642,13 +662,13 @@ Rules:
                     {"text": prompt},
                     {
                         "inline_data": {
-                            "mime_type": mime_type,
+                            "mime_type": original_mime,
                             "data": base64.b64encode(original_bytes).decode("utf-8")
                         }
                     },
                     {
                         "inline_data": {
-                            "mime_type": mime_type,
+                            "mime_type": generated_mime,
                             "data": base64.b64encode(generated_bytes).decode("utf-8")
                         }
                     }
@@ -722,25 +742,16 @@ def verify():
 
         original_bytes = original.read()
 
-        ext = (
-            original.filename.rsplit(".", 1)[-1].lower()
-            if "." in original.filename
-            else "jpg"
-        )
-
-        mime_type = {
-            "jpg": "image/jpeg",
-            "jpeg": "image/jpeg",
-            "png": "image/png",
-            "webp": "image/webp"
-        }.get(ext, "image/jpeg")
-
         generated_bytes = download_image(generated_url)
+
+        original_mime = detect_image_mime(original_bytes)
+        generated_mime = detect_image_mime(generated_bytes)
 
         verification = verify_with_gemini(
             original_bytes,
             generated_bytes,
-            mime_type,
+            original_mime,
+            generated_mime,
             {
                 "target": target,
                 "instruction": instruction,
@@ -750,10 +761,72 @@ def verify():
 
         status = verification.get("status", "FAIL").upper()
 
-        if status not in ("PASS", "FAIL"):
-            status = "FAIL"
+        score = int(verification.get("score", 0) or 0)
 
-        verification["status"] = status
+        target_changed = bool(
+            verification.get("target_changed", False)
+        )
+
+        protected_changed = bool(
+            verification.get("protected_elements_changed", False)
+        )
+
+        architecture_changed = bool(
+            verification.get("architecture_changed", False)
+        )
+
+        camera_changed = bool(
+            verification.get("camera_changed", False)
+        )
+
+        perspective_changed = bool(
+            verification.get("perspective_changed", False)
+        )
+
+        unrelated_changed = bool(
+            verification.get("unrelated_objects_changed", False)
+        )
+
+        # Deterministic RoomAI safety gate.
+        # Gemini proposes the assessment; RoomAI makes the final decision.
+        safe_to_pass = (
+            status == "PASS"
+            and score >= 70
+            and target_changed
+            and not protected_changed
+            and not architecture_changed
+            and not camera_changed
+            and not perspective_changed
+            and not unrelated_changed
+        )
+
+        if safe_to_pass:
+            verification["status"] = "PASS"
+        else:
+            verification["status"] = "FAIL"
+
+            reasons = []
+
+            if status != "PASS":
+                reasons.append("vision model did not approve the edit")
+            if score < 70:
+                reasons.append("verification score below 70")
+            if not target_changed:
+                reasons.append("requested target change was not verified")
+            if protected_changed:
+                reasons.append("protected element changed")
+            if architecture_changed:
+                reasons.append("room architecture changed")
+            if camera_changed:
+                reasons.append("camera changed")
+            if perspective_changed:
+                reasons.append("perspective changed")
+            if unrelated_changed:
+                reasons.append("unrelated object changed")
+
+            verification["message"] = (
+                "Verification rejected: " + "; ".join(reasons)
+            )
 
         return jsonify({
             "status": "complete",

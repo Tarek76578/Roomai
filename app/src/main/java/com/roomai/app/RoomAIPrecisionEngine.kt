@@ -83,6 +83,7 @@ data class PrecisionResult(
 object RoomAIPrecisionEngine {
 
     private const val MAX_ATTEMPTS = 2
+    private const val MIN_VERIFICATION_SCORE = 70
 
     suspend fun execute(
         context: Context,
@@ -465,49 +466,72 @@ object RoomAIPrecisionEngine {
                     "Backend returned no verification object"
                 )
 
+        val score = verification.optInt("score", 0)
+
+        val targetChanged =
+            verification.optBoolean("target_changed", false)
+
+        val protectedChanged =
+            verification.optBoolean(
+                "protected_elements_changed",
+                false
+            )
+
+        val architectureChanged =
+            verification.optBoolean(
+                "architecture_changed",
+                false
+            )
+
+        val cameraChanged =
+            verification.optBoolean(
+                "camera_changed",
+                false
+            )
+
+        val perspectiveChanged =
+            verification.optBoolean(
+                "perspective_changed",
+                false
+            )
+
+        val unrelatedChanged =
+            verification.optBoolean(
+                "unrelated_objects_changed",
+                false
+            )
+
+        val modelApproved =
+            verification
+                .optString("status", "FAIL")
+                .uppercase() == "PASS"
+
+        val acceptedBySafetyGate =
+            modelApproved &&
+                score >= MIN_VERIFICATION_SCORE &&
+                targetChanged &&
+                !protectedChanged &&
+                !architectureChanged &&
+                !cameraChanged &&
+                !perspectiveChanged &&
+                !unrelatedChanged
+
         val status =
-            when (
-                verification
-                    .optString("status", "FAIL")
-                    .uppercase()
-            ) {
-                "PASS" -> VerificationStatus.PASS
-                else -> VerificationStatus.FAIL
+            if (acceptedBySafetyGate) {
+                VerificationStatus.PASS
+            } else {
+                VerificationStatus.FAIL
             }
 
         return PrecisionVerification(
             status = status,
-            score = verification.optInt("score", 0),
-            targetChanged =
-                verification.optBoolean(
-                    "target_changed",
-                    false
-                ),
-            protectedElementsChanged =
-                verification.optBoolean(
-                    "protected_elements_changed",
-                    false
-                ),
-            architectureChanged =
-                verification.optBoolean(
-                    "architecture_changed",
-                    false
-                ),
-            cameraChanged =
-                verification.optBoolean(
-                    "camera_changed",
-                    false
-                ),
-            perspectiveChanged =
-                verification.optBoolean(
-                    "perspective_changed",
-                    false
-                ),
-            unrelatedObjectsChanged =
-                verification.optBoolean(
-                    "unrelated_objects_changed",
-                    false
-                ),
+            score = score,
+            targetChanged = targetChanged,
+            protectedElementsChanged = protectedChanged,
+            architectureChanged = architectureChanged,
+            cameraChanged = cameraChanged,
+            perspectiveChanged = perspectiveChanged,
+            unrelatedObjectsChanged = unrelatedChanged,
             message =
                 verification.optString(
                     "message",
