@@ -1343,6 +1343,9 @@ fun ToolPage(
             }
         }
 
+        }
+    }
+
     @Composable
 fun Styles() {
     ToolPage(
