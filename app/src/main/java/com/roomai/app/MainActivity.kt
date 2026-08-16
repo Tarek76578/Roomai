@@ -1495,6 +1495,10 @@ fun RoomAIPowerStudio() {
         mutableStateOf<String?>(null)
     }
 
+    var precisionVerification by remember {
+        mutableStateOf<PrecisionVerification?>(null)
+    }
+
     val picker =
         rememberLauncherForActivityResult(
             ActivityResultContracts.PickVisualMedia()
@@ -1702,7 +1706,7 @@ fun RoomAIPowerStudio() {
                 item {
                     StudioSectionTitle(
                         "Precision Edit",
-                        "Change one thing while explicitly protecting everything else."
+                        "Change one thing and verify that everything else stayed intact."
                     )
                 }
 
@@ -1712,6 +1716,9 @@ fun RoomAIPowerStudio() {
                         selected = selectedObject,
                         onSelected = {
                             selectedObject = it
+                            resultUrl = null
+                            precisionVerification = null
+                            error = null
                         }
                     )
                 }
@@ -1721,15 +1728,15 @@ fun RoomAIPowerStudio() {
                         value = instruction,
                         onValueChange = {
                             instruction = it
+                            precisionVerification = null
+                            error = null
                         },
                         modifier = Modifier.fillMaxWidth(),
                         label = {
                             Text("What should change?")
                         },
                         placeholder = {
-                            Text(
-                                "Example: replace it with a beige modern sofa."
-                            )
+                            Text("Example: replace it with a beige modern sofa.")
                         },
                         minLines = 3
                     )
@@ -1747,61 +1754,116 @@ fun RoomAIPowerStudio() {
                             loading = true
                             error = null
                             resultUrl = null
+                            precisionVerification = null
 
                             try {
-                                val prompt =
-                                    """
-                                    PRECISION EDIT MODE.
+                                val protectedElements =
+                                    objects
+                                        .filter { it != selectedObject }
+                                        .map {
+                                            ProtectedElement(
+                                                name = it,
+                                                reason = "Do not modify the unrelated $it"
+                                            )
+                                        }
 
-                                    Target object:
-                                    $selectedObject
+                                val precisionRequest =
+                                    PrecisionRequest(
+                                        target = PrecisionTarget(
+                                            name = selectedObject,
+                                            description = "The selected room element: $selectedObject",
+                                            selection = selectedObject
+                                        ),
+                                        editType = PrecisionEditType.REPLACE,
+                                        instruction = instruction.ifBlank {
+                                            "Improve this selected object while preserving its position, role and appearance context."
+                                        },
+                                        room = "Existing Room",
+                                        style = style,
+                                        protectedElements = protectedElements
+                                    )
 
-                                    User request:
-                                    ${instruction.ifBlank {
-                                        "Improve this selected object while keeping its role and position."
-                                    }}
+                                val result =
+                                    RoomAIPrecisionEngine.execute(
+                                        context = context,
+                                        uri = uri,
+                                        request = precisionRequest,
+                                        verify = true
+                                    )
 
-                                    HARD PRESERVATION RULES:
-                                    - Change ONLY the selected object.
-                                    - Preserve all walls.
-                                    - Preserve doors.
-                                    - Preserve windows.
-                                    - Preserve floor.
-                                    - Preserve ceiling.
-                                    - Preserve camera angle.
-                                    - Preserve perspective.
-                                    - Preserve lighting direction.
-                                    - Preserve every unrelated object.
-                                    - Do not redesign the whole room.
-                                    - Do not move unrelated furniture.
-                                    - Do not invent architectural changes.
-                                    - Keep the result photorealistic.
-                                    """.trimIndent()
+                                resultUrl = result.version.imageUrl
+                                precisionVerification =
+                                    result.version.verification
 
-                                val url = generateDesign(
-                                    context = context,
-                                    uri = uri,
-                                    room = "Existing Room",
-                                    style = style,
-                                    userPrompt = prompt,
-                                    operation = "precision_edit",
-                                    selection = selectedObject
-                                )
+                                if (result.accepted) {
+                                    saveDesign(
+                                        context,
+                                        result.version.imageUrl,
+                                        "Precision Verified",
+                                        selectedObject
+                                    )
+                                } else {
+                                    error =
+                                        "Precision verification failed after ${result.attempts} attempt(s). The result was not accepted."
+                                }
 
-                                resultUrl = url
-
-                                saveDesign(
-                                    context,
-                                    url,
-                                    "Precision Edit",
-                                    selectedObject
-                                )
                             } catch (e: Exception) {
                                 error =
                                     e.message
                                         ?: "Precision edit failed"
                             } finally {
                                 loading = false
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    val verification = precisionVerification
+                    val before = imageUri
+                    val after = resultUrl
+
+                    if (verification != null && after != null && before != null) {
+
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(22.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    if (verification.status == VerificationStatus.PASS)
+                                        "✓ Precision Verified"
+                                    else
+                                        "✕ Precision Verification Failed",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Text(
+                                    "Verification score: ${verification.score}/100"
+                                )
+
+                                Text(
+                                    verification.message.ifBlank {
+                                        if (verification.status == VerificationStatus.PASS)
+                                            "The requested change was detected and protected elements were preserved."
+                                        else
+                                            "The generated image did not satisfy all preservation rules."
+                                    }
+                                )
+
+                                Text(
+                                    "Attempts: ${if (verification.status == VerificationStatus.PASS) 1 else 2}"
+                                )
+
+                                BeforeAfterSwipe(
+                                    before = before,
+                                    after = after,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
                             }
                         }
                     }
