@@ -1299,6 +1299,8 @@ fun Diagnose() {
     var error by remember { mutableStateOf<String?>(null) }
 
     var fixingProblem by remember { mutableStateOf<String?>(null) }
+    var fixedResultUrl by remember { mutableStateOf<String?>(null) }
+    var fixedProblemTitle by remember { mutableStateOf<String?>(null) }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -1306,6 +1308,8 @@ fun Diagnose() {
         imageUri = uri
         diagnosis = null
         error = null
+        fixedResultUrl = null
+        fixedProblemTitle = null
     }
 
     LazyColumn(
@@ -1543,7 +1547,8 @@ fun Diagnose() {
                                                 problem = problem
                                             )
 
-                                            error = "Room problem fixed successfully. Check Designs to view the result."
+                                            fixedResultUrl = url
+                                            fixedProblemTitle = problem.title
 
                                             saveDesign(
                                                 context,
@@ -1581,6 +1586,28 @@ fun Diagnose() {
 
                                     Text("Fix This Problem")
                                 }
+                            }
+
+                            if (fixedProblemTitle == problem.title && fixedResultUrl != null) {
+                                Spacer(Modifier.height(14.dp))
+
+                                Text(
+                                    "Fixed Result",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(Modifier.height(8.dp))
+
+                                AsyncImage(
+                                    model = fixedResultUrl,
+                                    contentDescription = "Fixed room result",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(250.dp)
+                                        .clip(RoundedCornerShape(16.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
                             }
                         }
                     }
