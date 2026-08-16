@@ -1,5 +1,6 @@
 package com.roomai.app
 
+import android.util.Log
 import com.roomai.app.ui.RoomAITheme
 import android.content.Context
 import android.content.Intent
