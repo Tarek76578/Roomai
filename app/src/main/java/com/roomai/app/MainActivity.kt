@@ -424,7 +424,6 @@ fun Create() {
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var fixingProblem by remember { mutableStateOf<String?>(null) }
-    var fixedResultUrl by remember { mutableStateOf<String?>(null) }
 
     val picker =
         rememberLauncherForActivityResult(
@@ -1300,7 +1299,6 @@ fun Diagnose() {
     var error by remember { mutableStateOf<String?>(null) }
 
     var fixingProblem by remember { mutableStateOf<String?>(null) }
-    var fixedResultUrl by remember { mutableStateOf<String?>(null) }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -1537,7 +1535,6 @@ fun Diagnose() {
                                     scope.launch {
                                         fixingProblem = problem.title
                                         error = null
-                                        fixedResultUrl = null
 
                                         try {
                                             val url = fixRoomProblem(
@@ -1546,7 +1543,7 @@ fun Diagnose() {
                                                 problem = problem
                                             )
 
-                                            fixedResultUrl = url
+                                            error = "Room problem fixed successfully. Check Designs to view the result."
 
                                             saveDesign(
                                                 context,
