@@ -5,23 +5,17 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.DataOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.UUID
 
 enum class PrecisionEditType {
-    REPLACE,
-    RECOLOR,
-    RESTYLE,
-    REMOVE,
-    ADD,
-    MOVE,
-    FIX_PROBLEM
+    REPLACE, RECOLOR, RESTYLE, REMOVE, ADD, MOVE, FIX_PROBLEM
 }
 
 enum class VerificationStatus {
-    NOT_VERIFIED,
-    PASS,
-    FAIL,
-    RETRYING
+    NOT_VERIFIED, PASS, FAIL, RETRYING
 }
 
 data class PrecisionTarget(
@@ -51,6 +45,9 @@ data class PrecisionVerification(
     val targetChanged: Boolean = false,
     val protectedElementsChanged: Boolean = false,
     val architectureChanged: Boolean = false,
+    val cameraChanged: Boolean = false,
+    val perspectiveChanged: Boolean = false,
+    val unrelatedObjectsChanged: Boolean = false,
     val message: String = ""
 )
 
@@ -81,89 +78,78 @@ object RoomAIPrecisionEngine {
 
         var attempt = 0
         var lastUrl = ""
-        var lastVerification =
-            PrecisionVerification(
-                status = VerificationStatus.NOT_VERIFIED
-            )
+
+        var lastVerification = PrecisionVerification(
+            status = VerificationStatus.NOT_VERIFIED
+        )
 
         while (attempt < MAX_ATTEMPTS) {
-
             attempt++
 
-            val prompt =
-                buildPrecisionPrompt(
-                    request = request,
-                    attempt = attempt,
-                    previousFailure = lastVerification
-                )
+            val prompt = buildPrecisionPrompt(
+                request = request,
+                attempt = attempt,
+                previousFailure = lastVerification
+            )
 
-            val operation =
-                when (request.editType) {
-                    PrecisionEditType.FIX_PROBLEM -> "fix"
-                    PrecisionEditType.REPLACE -> "replace"
-                    PrecisionEditType.RECOLOR -> "recolor"
-                    PrecisionEditType.RESTYLE -> "restyle"
-                    PrecisionEditType.REMOVE -> "remove"
-                    PrecisionEditType.ADD -> "add"
-                    PrecisionEditType.MOVE -> "move"
-                }
+            val operation = when (request.editType) {
+                PrecisionEditType.FIX_PROBLEM -> "fix"
+                PrecisionEditType.REPLACE -> "replace"
+                PrecisionEditType.RECOLOR -> "recolor"
+                PrecisionEditType.RESTYLE -> "restyle"
+                PrecisionEditType.REMOVE -> "remove"
+                PrecisionEditType.ADD -> "add"
+                PrecisionEditType.MOVE -> "move"
+            }
 
-            lastUrl =
-                generateDesign(
-                    context = context,
-                    uri = uri,
-                    room = request.room,
-                    style = request.style,
-                    userPrompt = prompt,
-                    operation = operation,
-                    selection = request.target.selection
-                )
+            lastUrl = generateDesign(
+                context = context,
+                uri = uri,
+                room = request.room,
+                style = request.style,
+                userPrompt = prompt,
+                operation = operation,
+                selection = request.target.selection
+            )
 
             if (!verify) {
-
-                lastVerification =
-                    PrecisionVerification(
-                        status = VerificationStatus.NOT_VERIFIED,
-                        message =
-                            "Image generated. Verification was disabled."
-                    )
-
+                lastVerification = PrecisionVerification(
+                    status = VerificationStatus.NOT_VERIFIED,
+                    message = "Generation completed without verification."
+                )
                 break
             }
 
-            /*
-             * The backend verification contract is intentionally isolated.
-             *
-             * Until /verify exists on the backend, we do NOT pretend
-             * that Kotlin can reliably inspect pixel-level changes.
-             */
-            lastVerification =
-                requestVerification(
-                    imageUrl = lastUrl,
-                    request = request
-                )
+            lastVerification = verifyGeneratedImage(
+                context = context,
+                uri = uri,
+                generatedUrl = lastUrl,
+                request = request
+            )
 
-            if (lastVerification.status ==
-                VerificationStatus.PASS
-            ) {
+            if (lastVerification.status == VerificationStatus.PASS) {
                 break
+            }
+
+            if (attempt < MAX_ATTEMPTS) {
+                lastVerification = lastVerification.copy(
+                    status = VerificationStatus.RETRYING
+                )
             }
         }
 
         val accepted =
             !verify ||
-                lastVerification.status ==
-                VerificationStatus.PASS
+            lastVerification.status == VerificationStatus.PASS
 
-        val version =
-            PrecisionVersion(
-                parentId =
-                    request.sourceVersionId
-                        .takeIf { it != "original" },
-                imageUrl = lastUrl,
-                request = request,
-                verification = lastVerification
-            )
+        val version = PrecisionVersion(
+            parentId = request.sourceVersionId.takeIf {
+                it != "original"
+            },
+            imageUrl = lastUrl,
+            request = request,
+            verification = lastVerification
+        )
 
         PrecisionResult(
             version = version,
@@ -182,9 +168,7 @@ object RoomAIPrecisionEngine {
             if (request.protectedElements.isEmpty()) {
                 "Preserve every unrelated element."
             } else {
-                request.protectedElements.joinToString(
-                    separator = "\n"
-                ) {
+                request.protectedElements.joinToString("\n") {
                     "- ${it.name}: ${it.reason}"
                 }
             }
@@ -195,6 +179,7 @@ object RoomAIPrecisionEngine {
             } else {
                 """
                 PREVIOUS ATTEMPT FAILED VERIFICATION.
+
                 Failure:
                 ${previousFailure.message}
 
@@ -205,7 +190,7 @@ object RoomAIPrecisionEngine {
             }
 
         return """
-            ROOMAI PRECISION EDIT
+            ROOMAI PRECISION EDIT ENGINE
 
             TARGET:
             ${request.target.name}
@@ -253,21 +238,203 @@ object RoomAIPrecisionEngine {
         """.trimIndent()
     }
 
-    private fun requestVerification(
-        imageUrl: String,
+    private suspend fun verifyGeneratedImage(
+        context: Context,
+        uri: Uri,
+        generatedUrl: String,
         request: PrecisionRequest
-    ): PrecisionVerification {
+    ): PrecisionVerification = withContext(Dispatchers.IO) {
 
-        /*
-         * No false PASS.
-         *
-         * Until the backend exposes a real /verify endpoint,
-         * the result remains NOT_VERIFIED.
-         */
-        return PrecisionVerification(
-            status = VerificationStatus.NOT_VERIFIED,
+        val boundary = "RoomAI-Verify-${UUID.randomUUID()}"
+
+        val connection =
+            URL(DIAGNOSE_URL.replace("/diagnose", "/verify"))
+                .openConnection() as HttpURLConnection
+
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.connectTimeout = 30000
+        connection.readTimeout = 120000
+
+        connection.setRequestProperty(
+            "Content-Type",
+            "multipart/form-data; boundary=$boundary"
+        )
+
+        DataOutputStream(connection.outputStream).use { output ->
+
+            val bytes =
+                context.contentResolver
+                    .openInputStream(uri)
+                    ?.use { it.readBytes() }
+                    ?: throw Exception("Could not read original image")
+
+            output.write(
+                "--$boundary\r\n".toByteArray()
+            )
+
+            output.write(
+                (
+                    "Content-Disposition: form-data; " +
+                    "name=\"original\"; " +
+                    "filename=\"original.jpg\"\r\n"
+                ).toByteArray()
+            )
+
+            output.write(
+                "Content-Type: image/jpeg\r\n\r\n".toByteArray()
+            )
+
+            output.write(bytes)
+            output.write("\r\n".toByteArray())
+
+            writeTextPart(
+                output,
+                boundary,
+                "generated_url",
+                generatedUrl
+            )
+
+            writeTextPart(
+                output,
+                boundary,
+                "target",
+                request.target.name
+            )
+
+            writeTextPart(
+                output,
+                boundary,
+                "instruction",
+                request.instruction
+            )
+
+            val protectedJson =
+                request.protectedElements.joinToString(
+                    prefix = "[",
+                    postfix = "]"
+                ) {
+                    JSONObject()
+                        .put("name", it.name)
+                        .put("reason", it.reason)
+                        .toString()
+                }
+
+            writeTextPart(
+                output,
+                boundary,
+                "protected_elements",
+                protectedJson
+            )
+
+            output.write(
+                "--$boundary--\r\n".toByteArray()
+            )
+        }
+
+        val code = connection.responseCode
+
+        val stream =
+            if (code in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+            }
+
+        val response =
+            stream?.bufferedReader()?.use {
+                it.readText()
+            } ?: throw Exception("Empty verification response")
+
+        if (code !in 200..299) {
+            throw Exception(
+                "Verification HTTP $code: $response"
+            )
+        }
+
+        val root = JSONObject(response)
+
+        val verification =
+            root.optJSONObject("verification")
+                ?: throw Exception(
+                    "Backend returned no verification"
+                )
+
+        val status =
+            when (
+                verification
+                    .optString("status")
+                    .uppercase()
+            ) {
+                "PASS" -> VerificationStatus.PASS
+                "FAIL" -> VerificationStatus.FAIL
+                else -> VerificationStatus.FAIL
+            }
+
+        PrecisionVerification(
+            status = status,
+            score = verification.optInt("score", 0),
+            targetChanged =
+                verification.optBoolean(
+                    "target_changed",
+                    false
+                ),
+            protectedElementsChanged =
+                verification.optBoolean(
+                    "protected_elements_changed",
+                    false
+                ),
+            architectureChanged =
+                verification.optBoolean(
+                    "architecture_changed",
+                    false
+                ),
+            cameraChanged =
+                verification.optBoolean(
+                    "camera_changed",
+                    false
+                ),
+            perspectiveChanged =
+                verification.optBoolean(
+                    "perspective_changed",
+                    false
+                ),
+            unrelatedObjectsChanged =
+                verification.optBoolean(
+                    "unrelated_objects_changed",
+                    false
+                ),
             message =
-                "Generation completed, but visual verification requires the backend /verify endpoint."
+                verification.optString(
+                    "message",
+                    ""
+                )
+        )
+    }
+
+    private fun writeTextPart(
+        output: DataOutputStream,
+        boundary: String,
+        name: String,
+        value: String
+    ) {
+        output.write(
+            "--$boundary\r\n".toByteArray()
+        )
+
+        output.write(
+            (
+                "Content-Disposition: form-data; " +
+                "name=\"$name\"\r\n\r\n"
+            ).toByteArray()
+        )
+
+        output.write(
+            value.toByteArray()
+        )
+
+        output.write(
+            "\r\n".toByteArray()
         )
     }
 }
