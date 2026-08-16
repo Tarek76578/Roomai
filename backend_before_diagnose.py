@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import tempfile
@@ -10,8 +9,6 @@ app = Flask(__name__)
 
 API = "https://api.magichour.ai"
 KEY = os.environ.get("MAGIC_HOUR_API_KEY")
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def api_request(url, method="GET", data=None, headers=None):
@@ -136,159 +133,6 @@ def run_editor(image_path, ext, prompt):
     raise TimeoutError(
         "Generation timeout"
     )
-
-
-def diagnose_with_gemini(image_path, mime_type):
-    if not GEMINI_KEY:
-        raise RuntimeError("GEMINI_API_KEY missing")
-
-    with open(image_path, "rb") as f:
-        image_b64 = base64.b64encode(f.read()).decode("utf-8")
-
-    prompt = """
-You are RoomAI Advisor, an expert interior-design problem detector.
-
-Analyze the uploaded real room photo. Do NOT redesign the room.
-Your job is to identify practical problems that could cause the user
-to make a bad room decision.
-
-Return ONLY valid JSON with exactly these top-level fields:
-
-{
-  "summary": "short overall diagnosis",
-  "score": 0,
-  "problems": [
-    {
-      "title": "problem",
-      "severity": "low|medium|high",
-      "reason": "why it matters",
-      "recommendation": "what to do"
-    }
-  ],
-  "risk_scanner": [
-    {
-      "type": "space|movement|lighting|storage|access|cleaning|installation|budget|other",
-      "severity": "low|medium|high",
-      "message": "risk"
-    }
-  ],
-  "keep": ["items that should probably be kept"],
-  "replace": ["items that may be worth replacing"],
-  "upgrade": ["items that could be improved"],
-  "lifestyle_questions": [
-    "questions whose answers would improve the diagnosis"
-  ]
-}
-
-Rules:
-- Never invent exact measurements from a single photo.
-- Clearly distinguish visual observations from assumptions.
-- If something cannot be verified, say so.
-- Focus on actionable problems, not generic compliments.
-- Do not recommend expensive changes unless justified.
-- Preserve the user's existing room where possible.
-- The score should represent practical room readiness, not beauty.
-"""
-
-    payload = {
-        "contents": [{
-            "parts": [
-                {"text": prompt},
-                {
-                    "inline_data": {
-                        "mime_type": mime_type,
-                        "data": image_b64
-                    }
-                }
-            ]
-        }],
-        "generationConfig": {
-            "temperature": 0.2,
-            "responseMimeType": "application/json"
-        }
-    }
-
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        + GEMINI_MODEL
-        + ":generateContent?key="
-        + GEMINI_KEY
-    )
-
-    response = api_request(
-        url,
-        "POST",
-        json.dumps(payload).encode(),
-        {"Content-Type": "application/json"}
-    )
-
-    result = json.loads(response)
-
-    try:
-        text = result["candidates"][0]["content"]["parts"][0]["text"]
-        diagnosis = json.loads(text)
-    except Exception:
-        raise RuntimeError(
-            "Gemini returned an invalid diagnosis"
-        )
-
-    return diagnosis
-
-
-def diagnose():
-    if "image" not in request.files:
-        return jsonify({"error": "No image"}), 400
-
-    image = request.files["image"]
-
-    if not image.filename:
-        return jsonify({"error": "Invalid image"}), 400
-
-    ext = (
-        image.filename.rsplit(".", 1)[-1].lower()
-        if "." in image.filename
-        else "jpg"
-    )
-
-    mime_type = {
-        "jpg": "image/jpeg",
-        "jpeg": "image/jpeg",
-        "png": "image/png",
-        "webp": "image/webp"
-    }.get(ext, "image/jpeg")
-
-    image_path = None
-
-    try:
-        with tempfile.NamedTemporaryFile(
-            suffix="." + ext,
-            delete=False
-        ) as f:
-            image.save(f)
-            image_path = f.name
-
-        diagnosis = diagnose_with_gemini(
-            image_path,
-            mime_type
-        )
-
-        return jsonify({
-            "status": "complete",
-            "diagnosis": diagnosis
-        })
-
-    except Exception as e:
-        return jsonify({
-            "error": str(e)
-        }), 500
-
-    finally:
-        if image_path:
-            try:
-                os.remove(image_path)
-            except:
-                pass
-
 
 
 def process():
@@ -454,8 +298,7 @@ def home():
             "generate",
             "enhance",
             "furniture",
-            "products",
-            "diagnose"
+            "products"
         ]
     })
 
@@ -467,11 +310,6 @@ def health():
         "status": "ok",
         "configured": bool(KEY)
     })
-
-
-@app.post("/diagnose")
-def diagnose_route():
-    return diagnose()
 
 
 @app.post("/generate")
