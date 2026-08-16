@@ -1,6 +1,5 @@
 package com.roomai.app
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.input.pointer.consume
 import androidx.compose.ui.input.pointer.pointerInput
 
 import androidx.compose.ui.draw.clip
@@ -1337,7 +1336,6 @@ fun BeforeAfterSwipe(
                 .offset(x = 0.dp)
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
-                        change.consume()
                         position = (position + dragAmount.x / size.width)
                             .coerceIn(0.05f, 0.95f)
                     }
@@ -1350,7 +1348,6 @@ fun BeforeAfterSwipe(
                 .fillMaxWidth()
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
-                        change.consume()
                         position = (position + dragAmount.x / size.width)
                             .coerceIn(0.05f, 0.95f)
                     }
@@ -1675,7 +1672,9 @@ fun Diagnose() {
                                 }
                             }
 
-                            if (fixedProblemTitle == problem.title && fixedResultUrl != null) {
+                            val resultUrl = fixedResultUrl
+
+                            if (fixedProblemTitle == problem.title && resultUrl != null) {
                                 Spacer(Modifier.height(14.dp))
 
                                 Text(
@@ -1688,7 +1687,7 @@ fun Diagnose() {
 
                                 BeforeAfterSwipe(
                                     before = imageUri!!,
-                                    after = fixedResultUrl
+                                    after = resultUrl
                                 )
                             }
                         }
