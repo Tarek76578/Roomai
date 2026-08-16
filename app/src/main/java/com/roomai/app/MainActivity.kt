@@ -10,6 +10,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.*
@@ -421,7 +426,7 @@ fun Create() {
 
     val picker =
         rememberLauncherForActivityResult(
-            ActivityResultContracts.GetContent()
+            ActivityResultContracts.PickVisualMedia()
         ) { uri ->
             imageUri = uri
             resultUrl = null
@@ -447,7 +452,7 @@ fun Create() {
         item {
             if (imageUri == null) {
                 OutlinedCard(
-                    onClick = { picker.launch("image/*") },
+                    onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(230.dp),
@@ -485,7 +490,7 @@ fun Create() {
                 )
 
                 OutlinedButton(
-                    onClick = { picker.launch("image/*") },
+                    onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Change Photo")
@@ -1262,7 +1267,7 @@ fun Diagnose() {
     var error by remember { mutableStateOf<String?>(null) }
 
     val picker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         imageUri = uri
         diagnosis = null
@@ -1292,7 +1297,7 @@ fun Diagnose() {
             if (imageUri == null) {
                 OutlinedCard(
                     onClick = {
-                        picker.launch("image/*")
+                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1332,7 +1337,7 @@ fun Diagnose() {
 
                 OutlinedButton(
                     onClick = {
-                        picker.launch("image/*")
+                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1663,7 +1668,7 @@ fun ToolPage(
     var error by remember { mutableStateOf<String?>(null) }
 
     val picker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         imageUri = uri
         resultUrl = null
@@ -1688,7 +1693,7 @@ fun ToolPage(
         item {
             if (imageUri == null) {
                 OutlinedCard(
-                    onClick = { picker.launch("image/*") },
+                    onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(210.dp),
@@ -1723,7 +1728,7 @@ fun ToolPage(
                 )
 
                 OutlinedButton(
-                    onClick = { picker.launch("image/*") },
+                    onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Change Photo")
@@ -1923,29 +1928,92 @@ fun ToolPage(
                 )
 
                 if (showFullScreen) {
-                    AlertDialog(
-                        onDismissRequest = { showFullScreen = false },
-                        confirmButton = {
-                            TextButton(
-                                onClick = { showFullScreen = false }
-                            ) {
-                                Text("Close")
-                            }
+                    var scale by remember { mutableStateOf(1f) }
+                    var offsetX by remember { mutableStateOf(0f) }
+                    var offsetY by remember { mutableStateOf(0f) }
+
+                    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+                        scale = (scale * zoomChange).coerceIn(1f, 5f)
+                        offsetX += panChange.x
+                        offsetY += panChange.y
+                    }
+
+                    androidx.compose.ui.window.Dialog(
+                        onDismissRequest = {
+                            showFullScreen = false
                         },
-                        title = {
-                            Text("RoomAI Design")
-                        },
-                        text = {
+                        properties = androidx.compose.ui.window.DialogProperties(
+                            usePlatformDefaultWidth = false
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background)
+                        ) {
                             AsyncImage(
                                 model = if (showBefore) imageUri else url,
                                 contentDescription = "Full screen design",
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(500.dp),
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                        translationX = offsetX
+                                        translationY = offsetY
+                                    }
+                                    .transformable(transformState),
                                 contentScale = ContentScale.Fit
                             )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                                    .align(Alignment.TopCenter),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        showFullScreen = false
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Close"
+                                    )
+                                }
+
+                                Text(
+                                    if (showBefore) "Original Room" else "AI Design",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                IconButton(
+                                    onClick = {
+                                        scale = 1f
+                                        offsetX = 0f
+                                        offsetY = 0f
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = "Reset zoom"
+                                    )
+                                }
+                            }
+
+                            Text(
+                                "Pinch to zoom • Drag to move",
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 24.dp),
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
