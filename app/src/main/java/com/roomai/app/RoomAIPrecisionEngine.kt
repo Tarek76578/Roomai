@@ -10,12 +10,27 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
 
+private const val GENERATE_URL =
+    "https://roomai-wagl.onrender.com/generate"
+
+private const val VERIFY_URL =
+    "https://roomai-wagl.onrender.com/verify"
+
 enum class PrecisionEditType {
-    REPLACE, RECOLOR, RESTYLE, REMOVE, ADD, MOVE, FIX_PROBLEM
+    REPLACE,
+    RECOLOR,
+    RESTYLE,
+    REMOVE,
+    ADD,
+    MOVE,
+    FIX_PROBLEM
 }
 
 enum class VerificationStatus {
-    NOT_VERIFIED, PASS, FAIL, RETRYING
+    NOT_VERIFIED,
+    PASS,
+    FAIL,
+    RETRYING
 }
 
 data class PrecisionTarget(
@@ -84,6 +99,7 @@ object RoomAIPrecisionEngine {
         )
 
         while (attempt < MAX_ATTEMPTS) {
+
             attempt++
 
             val prompt = buildPrecisionPrompt(
@@ -238,23 +254,25 @@ object RoomAIPrecisionEngine {
         """.trimIndent()
     }
 
-    private suspend fun verifyGeneratedImage(
+    private suspend fun generateDesign(
         context: Context,
         uri: Uri,
-        generatedUrl: String,
-        request: PrecisionRequest
-    ): PrecisionVerification = withContext(Dispatchers.IO) {
+        room: String,
+        style: String,
+        userPrompt: String,
+        operation: String,
+        selection: String
+    ): String = withContext(Dispatchers.IO) {
 
-        val boundary = "RoomAI-Verify-${UUID.randomUUID()}"
+        val boundary = "RoomAI-Generate-${UUID.randomUUID()}"
 
         val connection =
-            URL(DIAGNOSE_URL.replace("/diagnose", "/verify"))
-                .openConnection() as HttpURLConnection
+            URL(GENERATE_URL).openConnection() as HttpURLConnection
 
         connection.requestMethod = "POST"
         connection.doOutput = true
         connection.connectTimeout = 30000
-        connection.readTimeout = 120000
+        connection.readTimeout = 180000
 
         connection.setRequestProperty(
             "Content-Type",
@@ -269,24 +287,105 @@ object RoomAIPrecisionEngine {
                     ?.use { it.readBytes() }
                     ?: throw Exception("Could not read original image")
 
-            output.write(
-                "--$boundary\r\n".toByteArray()
+            writeFilePart(
+                output = output,
+                boundary = boundary,
+                fieldName = "image",
+                fileName = "room.jpg",
+                contentType = "image/jpeg",
+                bytes = bytes
             )
 
-            output.write(
-                (
-                    "Content-Disposition: form-data; " +
-                    "name=\"original\"; " +
-                    "filename=\"original.jpg\"\r\n"
-                ).toByteArray()
-            )
+            writeTextPart(output, boundary, "operation", operation)
+            writeTextPart(output, boundary, "room", room)
+            writeTextPart(output, boundary, "style", style)
+            writeTextPart(output, boundary, "selection", selection)
+            writeTextPart(output, boundary, "prompt", userPrompt)
 
-            output.write(
-                "Content-Type: image/jpeg\r\n\r\n".toByteArray()
-            )
+            output.write("--$boundary--\r\n".toByteArray())
+        }
 
-            output.write(bytes)
-            output.write("\r\n".toByteArray())
+        val code = connection.responseCode
+
+        val responseText =
+            if (code in 200..299) {
+                connection.inputStream.bufferedReader().use {
+                    it.readText()
+                }
+            } else {
+                val error =
+                    connection.errorStream
+                        ?.bufferedReader()
+                        ?.use { it.readText() }
+                        ?: "HTTP $code"
+
+                throw Exception(
+                    "Generation failed: HTTP $code: $error"
+                )
+            }
+
+        connection.disconnect()
+
+        val json = JSONObject(responseText)
+
+        val status = json.optString("status")
+
+        if (status != "complete") {
+            throw Exception(
+                "Generation did not complete: $responseText"
+            )
+        }
+
+        val imageUrl = json.optString("image_url")
+
+        if (imageUrl.isBlank()) {
+            throw Exception(
+                "Generation returned no image_url"
+            )
+        }
+
+        imageUrl
+    }
+
+    private suspend fun verifyGeneratedImage(
+        context: Context,
+        uri: Uri,
+        generatedUrl: String,
+        request: PrecisionRequest
+    ): PrecisionVerification = withContext(Dispatchers.IO) {
+
+        val boundary =
+            "RoomAI-Verify-${UUID.randomUUID()}"
+
+        val connection =
+            URL(VERIFY_URL).openConnection() as HttpURLConnection
+
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.connectTimeout = 30000
+        connection.readTimeout = 180000
+
+        connection.setRequestProperty(
+            "Content-Type",
+            "multipart/form-data; boundary=$boundary"
+        )
+
+        DataOutputStream(connection.outputStream).use { output ->
+
+            val bytes =
+                context.contentResolver
+                    .openInputStream(uri)
+                    ?.use { it.readBytes() }
+                    ?: throw Exception("Could not read original image")
+
+            writeFilePart(
+                output = output,
+                boundary = boundary,
+                fieldName = "original",
+                fileName = "original.jpg",
+                contentType = "image/jpeg",
+                bytes = bytes
+            )
 
             writeTextPart(
                 output,
@@ -327,51 +426,56 @@ object RoomAIPrecisionEngine {
                 protectedJson
             )
 
-            output.write(
-                "--$boundary--\r\n".toByteArray()
-            )
+            output.write("--$boundary--\r\n".toByteArray())
         }
 
         val code = connection.responseCode
 
-        val stream =
+        val responseText =
             if (code in 200..299) {
                 connection.inputStream
+                    .bufferedReader()
+                    .use { it.readText() }
             } else {
-                connection.errorStream
+                val error =
+                    connection.errorStream
+                        ?.bufferedReader()
+                        ?.use { it.readText() }
+                        ?: "HTTP $code"
+
+                throw Exception(
+                    "Verification failed: HTTP $code: $error"
+                )
             }
 
-        val response =
-            stream?.bufferedReader()?.use {
-                it.readText()
-            } ?: throw Exception("Empty verification response")
+        connection.disconnect()
 
-        if (code !in 200..299) {
-            throw Exception(
-                "Verification HTTP $code: $response"
-            )
-        }
+        parseVerificationResponse(responseText)
+    }
 
-        val root = JSONObject(response)
+    private fun parseVerificationResponse(
+        responseText: String
+    ): PrecisionVerification {
+
+        val root = JSONObject(responseText)
 
         val verification =
             root.optJSONObject("verification")
                 ?: throw Exception(
-                    "Backend returned no verification"
+                    "Backend returned no verification object"
                 )
 
         val status =
             when (
                 verification
-                    .optString("status")
+                    .optString("status", "FAIL")
                     .uppercase()
             ) {
                 "PASS" -> VerificationStatus.PASS
-                "FAIL" -> VerificationStatus.FAIL
                 else -> VerificationStatus.FAIL
             }
 
-        PrecisionVerification(
+        return PrecisionVerification(
             status = status,
             score = verification.optInt("score", 0),
             targetChanged =
@@ -425,16 +529,40 @@ object RoomAIPrecisionEngine {
         output.write(
             (
                 "Content-Disposition: form-data; " +
-                "name=\"$name\"\r\n\r\n"
+                    "name=\"$name\"\r\n\r\n"
+            ).toByteArray()
+        )
+
+        output.write(value.toByteArray())
+        output.write("\r\n".toByteArray())
+    }
+
+    private fun writeFilePart(
+        output: DataOutputStream,
+        boundary: String,
+        fieldName: String,
+        fileName: String,
+        contentType: String,
+        bytes: ByteArray
+    ) {
+        output.write(
+            "--$boundary\r\n".toByteArray()
+        )
+
+        output.write(
+            (
+                "Content-Disposition: form-data; " +
+                    "name=\"$fieldName\"; " +
+                    "filename=\"$fileName\"\r\n"
             ).toByteArray()
         )
 
         output.write(
-            value.toByteArray()
+            "Content-Type: $contentType\r\n\r\n"
+                .toByteArray()
         )
 
-        output.write(
-            "\r\n".toByteArray()
-        )
+        output.write(bytes)
+        output.write("\r\n".toByteArray())
     }
 }
