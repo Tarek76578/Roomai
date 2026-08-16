@@ -1256,6 +1256,9 @@ fun ToolPage(
 
         item {
             resultUrl?.let { url ->
+                var showFullScreen by remember { mutableStateOf(false) }
+                var showBefore by remember { mutableStateOf(false) }
+
                 Text(
                     "AI Result",
                     style = MaterialTheme.typography.headlineSmall,
@@ -1264,14 +1267,46 @@ fun ToolPage(
 
                 Spacer(Modifier.height(8.dp))
 
-                AsyncImage(
-                    model = url,
-                    contentDescription = "AI result",
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(350.dp),
-                    contentScale = ContentScale.Crop
-                )
+                        .clickable { showFullScreen = true },
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+                    AsyncImage(
+                        model = if (showBefore) imageUri else url,
+                        contentDescription = if (showBefore) "Original room" else "Generated design",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(350.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showBefore = !showBefore },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Compare, null)
+                        Spacer(Modifier.width(5.dp))
+                        Text(if (showBefore) "After" else "Before")
+                    }
+
+                    OutlinedButton(
+                        onClick = { shareDesign(context, url) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Share, null)
+                        Spacer(Modifier.width(5.dp))
+                        Text("Share")
+                    }
+                }
 
                 Spacer(Modifier.height(8.dp))
 
@@ -1279,12 +1314,36 @@ fun ToolPage(
                     "Saved to My Designs",
                     color = MaterialTheme.colorScheme.primary
                 )
+
+                if (showFullScreen) {
+                    AlertDialog(
+                        onDismissRequest = { showFullScreen = false },
+                        confirmButton = {
+                            TextButton(
+                                onClick = { showFullScreen = false }
+                            ) {
+                                Text("Close")
+                            }
+                        },
+                        title = {
+                            Text("RoomAI Design")
+                        },
+                        text = {
+                            AsyncImage(
+                                model = if (showBefore) imageUri else url,
+                                contentDescription = "Full screen design",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(500.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    )
+                }
             }
         }
-    }
-}
 
-@Composable
+    @Composable
 fun Styles() {
     ToolPage(
         title = "AI Styles",
