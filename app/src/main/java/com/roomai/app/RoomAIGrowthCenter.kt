@@ -3,7 +3,6 @@ package com.roomai.app
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -110,7 +109,7 @@ fun RoomAIGrowthCenter(
                 )
 
                 Text(
-                    "Turn every design into content.",
+                    "Turn every design into content people want to share.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -143,7 +142,7 @@ fun RoomAIGrowthCenter(
             ) {
                 Column {
                     Text(
-                        "Design → Content → Share",
+                        "Design → Reveal → Share → Discover",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -487,7 +486,7 @@ private fun shareRoomAIText(
     context.startActivity(
         Intent.createChooser(
             intent,
-            "Share RoomAI"
+            "Share your RoomAI design"
         )
     )
 }
