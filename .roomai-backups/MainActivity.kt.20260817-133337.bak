@@ -455,13 +455,6 @@ fun RoomAIApp(
                 )
             }
 
-            composable("growth") {
-                RoomAIGrowthCenter(
-                    onBack = { nav.popBackStack() },
-                    onCreate = { nav.navigate("create") }
-                )
-            }
-
             composable("create") {
                 Create()
             }
