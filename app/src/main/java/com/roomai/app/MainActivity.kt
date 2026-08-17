@@ -256,6 +256,40 @@ private suspend fun roomAiAuthRequest(
 }
 
 
+
+private suspend fun roomAiLogout(context: Context) =
+    withContext(Dispatchers.IO) {
+
+        val token = roomAiToken(context)
+
+        if (token.isBlank()) {
+            return@withContext
+        }
+
+        try {
+            val connection =
+                URL(AUTH_BASE_URL + "/auth/logout")
+                    .openConnection() as HttpURLConnection
+
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.connectTimeout = 15000
+            connection.readTimeout = 15000
+
+            connection.setRequestProperty(
+                "Authorization",
+                "Bearer $token"
+            )
+
+            connection.responseCode
+
+        } catch (_: Exception) {
+            // Local logout must still succeed if the network is unavailable.
+        } finally {
+            clearRoomAiToken(context)
+        }
+    }
+
 private suspend fun roomAiUsage(context: Context): RoomAIUsage =
     withContext(Dispatchers.IO) {
 
@@ -529,7 +563,16 @@ fun RoomAIApp(
             }
 
             composable("menu") {
-                Menu(dark, setDark)
+                Menu(
+                    dark = dark,
+                    setDark = setDark,
+                    onLogout = {
+                        scope.launch {
+                            roomAiLogout(context)
+                            token = ""
+                        }
+                    }
+                )
             }
         }
     }
@@ -5147,7 +5190,8 @@ fun Products() {
 @Composable
 fun Menu(
     dark: Boolean,
-    setDark: (Boolean) -> Unit
+    setDark: (Boolean) -> Unit,
+    onLogout: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -5161,6 +5205,78 @@ fun Menu(
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
+        }
+
+
+        item {
+            val context = LocalContext.current
+            val savedEmail =
+                context.getSharedPreferences(
+                    ROOMAI_PLAN_PREFS,
+                    Context.MODE_PRIVATE
+                ).getString(
+                    "account_email",
+                    ""
+                ).orEmpty()
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(12.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                "Account",
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                if (savedEmail.isBlank())
+                                    "Signed in"
+                                else
+                                    savedEmail,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = onLogout
+                    ) {
+                        Icon(
+                            Icons.Default.Logout,
+                            contentDescription = null
+                        )
+
+                        Spacer(Modifier.width(8.dp))
+
+                        Text("Log out")
+                    }
+                }
+            }
         }
 
         item {
