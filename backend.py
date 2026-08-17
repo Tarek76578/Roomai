@@ -11,6 +11,7 @@ import secrets
 import hmac
 import re
 from flask import Flask, jsonify, request
+from diagnostic_engine import build_diagnostic_prompt, normalize_diagnosis
 
 app = Flask(__name__)
 
@@ -215,29 +216,41 @@ def db():
 
 
 def usage_key():
-    user = authenticated_user()
+    """
+    Return the server-side quota identity.
+
+    Authenticated users:
+        user:<database user id>
+
+    Guests:
+        guest:<installation identifier>
+
+    The server never treats a guest device identifier as proof
+    of account identity. It is only an installation-level quota key.
+    """
+
+    user = authenticated_user(required=False)
 
     if user:
         return "user:" + str(user["id"])
 
-    # Authentication is required for quota-protected endpoints.
-    # Keep the fallback only for internal compatibility.
-    device_id = request.form.get(
-        "device_id",
+    device_id = request.headers.get(
+        "X-RoomAI-Device",
         ""
     ).strip()
 
     if not device_id:
-        device_id = request.headers.get(
-            "X-RoomAI-Device",
+        device_id = request.form.get(
+            "device_id",
             ""
         ).strip()
 
     if not device_id:
         device_id = request.remote_addr or "unknown"
 
-    return device_id[:128]
-
+    # Normalize the guest namespace so guest keys can never collide
+    # with authenticated account keys.
+    return "guest:" + device_id[:128]
 
 def current_month():
     return time.strftime("%Y-%m")
@@ -624,57 +637,24 @@ def check_gemini_models():
     return json.loads(response)
 
 
-def diagnose_with_gemini(image_path, mime_type):
+def diagnose_with_gemini(
+    image_path,
+    mime_type,
+    user_goal=""
+):
     if not GEMINI_KEY:
-        raise RuntimeError("GEMINI_API_KEY missing")
+        raise RuntimeError(
+            "GEMINI_API_KEY missing"
+        )
 
     with open(image_path, "rb") as f:
-        image_b64 = base64.b64encode(f.read()).decode("utf-8")
+        image_b64 = base64.b64encode(
+            f.read()
+        ).decode("utf-8")
 
-    prompt = """
-You are RoomAI Advisor, an expert interior-design problem detector.
-
-Analyze the uploaded real room photo. Do NOT redesign the room.
-Your job is to identify practical problems that could cause the user
-to make a bad room decision.
-
-Return ONLY valid JSON with exactly these top-level fields:
-
-{
-  "summary": "short overall diagnosis",
-  "score": 0,
-  "problems": [
-    {
-      "title": "problem",
-      "severity": "low|medium|high",
-      "reason": "why it matters",
-      "recommendation": "what to do"
-    }
-  ],
-  "risk_scanner": [
-    {
-      "type": "space|movement|lighting|storage|access|cleaning|installation|budget|other",
-      "severity": "low|medium|high",
-      "message": "risk"
-    }
-  ],
-  "keep": ["items that should probably be kept"],
-  "replace": ["items that may be worth replacing"],
-  "upgrade": ["items that could be improved"],
-  "lifestyle_questions": [
-    "questions whose answers would improve the diagnosis"
-  ]
-}
-
-Rules:
-- Never invent exact measurements from a single photo.
-- Clearly distinguish visual observations from assumptions.
-- If something cannot be verified, say so.
-- Focus on actionable problems, not generic compliments.
-- Do not recommend expensive changes unless justified.
-- Preserve the user's existing room where possible.
-- The score should represent practical room readiness, not beauty.
-"""
+    prompt = build_diagnostic_prompt(
+        user_goal=user_goal
+    )
 
     payload = {
         "contents": [{
@@ -689,7 +669,7 @@ Rules:
             ]
         }],
         "generationConfig": {
-            "temperature": 0.2,
+            "temperature": 0.1,
             "responseMimeType": "application/json"
         }
     }
@@ -710,9 +690,12 @@ Rules:
                 "x-goog-api-key": GEMINI_KEY
             }
         )
+
     except RuntimeError as e:
-        # Fallback to Gemini 3.1 Flash-Lite when the primary model is unavailable.
-        if "HTTP 503" not in str(e) or not GEMINI_KEY_31:
+        if (
+            "HTTP 503" not in str(e)
+            or not GEMINI_KEY_31
+        ):
             raise
 
         fallback_url = (
@@ -734,70 +717,148 @@ Rules:
     result = json.loads(response)
 
     try:
-        text = result["candidates"][0]["content"]["parts"][0]["text"]
-        diagnosis = json.loads(text)
-    except Exception:
+        text = (
+            result["candidates"][0]
+            ["content"]["parts"][0]["text"]
+        )
+
+        raw_diagnosis = json.loads(text)
+
+        diagnosis = normalize_diagnosis(
+            raw_diagnosis
+        )
+
+    except Exception as e:
         raise RuntimeError(
-            "Gemini returned an invalid diagnosis"
+            "Gemini returned an invalid "
+            "RoomAI diagnostic: %s" % e
         )
 
     return diagnosis
 
-
 def diagnose():
-    if "image" not in request.files:
-        return jsonify({"error": "No image"}), 400
+    """
+    Problem-first room diagnosis.
 
-    image = request.files["image"]
+    Diagnosis is a protected AI operation.
+    The same server-side quota used by generation
+    applies here, so clients cannot bypass usage
+    by calling /diagnose directly.
+    """
 
-    if not image.filename:
-        return jsonify({"error": "Invalid image"}), 400
+    allowed, usage = reserve_generation()
 
-    ext = (
-        image.filename.rsplit(".", 1)[-1].lower()
-        if "." in image.filename
-        else "jpg"
-    )
+    if not allowed:
+        return jsonify({
+            "error": "Diagnosis limit reached",
+            "code": "USAGE_LIMIT_REACHED",
+            "plan": usage["plan"],
+            "used": usage["used"],
+            "reserved": usage["reserved"],
+            "limit": usage["limit"],
+            "remaining": usage["remaining"],
+            "month": usage["month"]
+        }), 429
 
-    mime_type = {
-        "jpg": "image/jpeg",
-        "jpeg": "image/jpeg",
-        "png": "image/png",
-        "webp": "image/webp"
-    }.get(ext, "image/jpeg")
-
+    reservation_active = True
     image_path = None
 
     try:
+
+        if "image" not in request.files:
+            release_generation()
+            reservation_active = False
+
+            return jsonify({
+                "error": "No image"
+            }), 400
+
+        image = request.files["image"]
+
+        if not image.filename:
+            release_generation()
+            reservation_active = False
+
+            return jsonify({
+                "error": "Invalid image"
+            }), 400
+
+        ext = (
+            image.filename.rsplit(".", 1)[-1].lower()
+            if "." in image.filename
+            else "jpg"
+        )
+
+        mime_types = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "webp": "image/webp"
+        }
+
+        if ext not in mime_types:
+            release_generation()
+            reservation_active = False
+
+            return jsonify({
+                "error": "Unsupported image format"
+            }), 400
+
+        mime_type = mime_types[ext]
+
+        user_goal = request.form.get(
+            "goal",
+            ""
+        ).strip()
+
         with tempfile.NamedTemporaryFile(
             suffix="." + ext,
             delete=False
         ) as f:
+
             image.save(f)
             image_path = f.name
 
         diagnosis = diagnose_with_gemini(
             image_path,
-            mime_type
+            mime_type,
+            user_goal=user_goal
         )
+
+        committed = commit_generation()
+
+        if not committed:
+            raise RuntimeError(
+                "Diagnosis usage could not be committed"
+            )
+
+        reservation_active = False
 
         return jsonify({
             "status": "complete",
-            "diagnosis": diagnosis
+            "diagnosis": diagnosis,
+            "usage": usage_status()
         })
 
     except Exception as e:
+
+        if reservation_active:
+            try:
+                release_generation()
+            except Exception:
+                pass
+
         return jsonify({
             "error": str(e)
         }), 500
 
     finally:
+
         if image_path:
             try:
                 os.remove(image_path)
-            except:
+            except Exception:
                 pass
-
 
 
 def process():
@@ -1096,6 +1157,74 @@ def auth_register():
         )
 
         user_id = cursor.lastrowid
+
+        # --------------------------------------------------------
+        # Guest -> Account quota migration
+        #
+        # If this installation already consumed free generations
+        # before registration, carry that usage into the new
+        # server-side account identity.
+        #
+        # This prevents:
+        #   guest 4/5 -> register -> account 0/5
+        #
+        # from becoming an unintended 9-generation allowance.
+        # --------------------------------------------------------
+
+        guest_key = "guest:" + device_id
+        month = current_month()
+
+        guest_usage = connection.execute(
+            """
+            SELECT used, reserved
+            FROM usage
+            WHERE device_id = ?
+              AND month = ?
+            """,
+            (guest_key, month)
+        ).fetchone()
+
+        if guest_usage:
+            guest_used, guest_reserved = guest_usage
+
+            account_key = "user:" + str(user_id)
+
+            connection.execute(
+                """
+                INSERT INTO usage(
+                    device_id,
+                    month,
+                    used,
+                    reserved
+                )
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(device_id, month)
+                DO UPDATE SET
+                    used = MAX(usage.used, excluded.used),
+                    reserved = MAX(
+                        usage.reserved,
+                        excluded.reserved
+                    )
+                """,
+                (
+                    account_key,
+                    month,
+                    guest_used,
+                    guest_reserved
+                )
+            )
+
+            # The guest quota is now represented by the account.
+            # Remove the old guest row so the same usage cannot
+            # later be counted again.
+            connection.execute(
+                """
+                DELETE FROM usage
+                WHERE device_id = ?
+                  AND month = ?
+                """,
+                (guest_key, month)
+            )
 
         token = secrets.token_urlsafe(48)
         expires_at = now + (
