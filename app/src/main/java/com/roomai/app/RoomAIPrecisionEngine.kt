@@ -280,6 +280,15 @@ object RoomAIPrecisionEngine {
             "multipart/form-data; boundary=$boundary"
         )
 
+        // Header handling: send Authorization when authenticated;
+        // otherwise send persistent device id for guest quota.
+        val token = roomAiToken(context)
+        if (!token.isNullOrBlank()) {
+            connection.setRequestProperty("Authorization", "Bearer $token")
+        } else {
+            connection.setRequestProperty("X-RoomAI-Device", roomAiDeviceId(context))
+        }
+
         DataOutputStream(connection.outputStream).use { output ->
 
             val bytes =
@@ -370,6 +379,14 @@ object RoomAIPrecisionEngine {
             "Content-Type",
             "multipart/form-data; boundary=$boundary"
         )
+
+        // Header handling for verification requests
+        val token = roomAiToken(context)
+        if (!token.isNullOrBlank()) {
+            connection.setRequestProperty("Authorization", "Bearer $token")
+        } else {
+            connection.setRequestProperty("X-RoomAI-Device", roomAiDeviceId(context))
+        }
 
         DataOutputStream(connection.outputStream).use { output ->
 
@@ -546,9 +563,7 @@ object RoomAIPrecisionEngine {
         name: String,
         value: String
     ) {
-        output.write(
-            "--$boundary\r\n".toByteArray()
-        )
+        output.write("--$boundary\r\n".toByteArray())
 
         output.write(
             (
@@ -569,9 +584,7 @@ object RoomAIPrecisionEngine {
         contentType: String,
         bytes: ByteArray
     ) {
-        output.write(
-            "--$boundary\r\n".toByteArray()
-        )
+        output.write("--$boundary\r\n".toByteArray())
 
         output.write(
             (
@@ -582,8 +595,7 @@ object RoomAIPrecisionEngine {
         )
 
         output.write(
-            "Content-Type: $contentType\r\n\r\n"
-                .toByteArray()
+            "Content-Type: $contentType\r\n\r\n".toByteArray()
         )
 
         output.write(bytes)
