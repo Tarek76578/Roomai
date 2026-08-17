@@ -118,6 +118,14 @@ fun RoomAIDecisionEngine() {
         mutableStateOf<RoomAISolutionBrief?>(null)
     }
 
+    var solutionImageUrl by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var solutionGenerating by remember {
+        mutableStateOf(false)
+    }
+
     var loading by remember {
         mutableStateOf(false)
     }
@@ -142,6 +150,8 @@ fun RoomAIDecisionEngine() {
             imageUri = uri
             diagnosis = null
             solutionBrief = null
+            solutionImageUrl = null
+            solutionGenerating = false
             error = null
         }
 
@@ -818,21 +828,154 @@ fun RoomAIDecisionEngine() {
                         Spacer(Modifier.height(8.dp))
 
                         Button(
+                            enabled = imageUri != null && !solutionGenerating,
                             onClick = {
+
+                                val uri = imageUri
+                                    ?: return@Button
+
+                                solutionGenerating = true
+                                solutionImageUrl = null
+                                error = null
                                 solutionBrief = solution
+
+                                scope.launch {
+
+                                    try {
+
+                                        /*
+                                         * IMPORTANT:
+                                         *
+                                         * We deliberately reuse the existing
+                                         * generateDesign() pipeline.
+                                         *
+                                         * The difference is the prompt:
+                                         * it now contains the actual diagnosis,
+                                         * priorities, budget and actions.
+                                         */
+
+                                        val generatedUrl =
+                                            generateDesign(
+                                                context = context,
+                                                uri = uri,
+                                                room = "Room",
+                                                style = "Problem Solving",
+                                                userPrompt =
+                                                    solution.generationBrief(),
+                                                operation = "fix",
+                                                selection =
+                                                    solution.goal
+                                            )
+
+                                        solutionImageUrl =
+                                            generatedUrl
+
+                                        RoomAIHistory.add(
+                                            context = context,
+                                            generatedUrl = generatedUrl,
+                                            room = "Room",
+                                            style = "Problem Solving",
+                                            prompt =
+                                                solution.generationBrief(),
+                                            originalUrl =
+                                                uri.toString()
+                                        )
+
+                                    } catch (e: Exception) {
+
+                                        error =
+                                            e.message
+                                                ?: "Could not build the solution."
+
+                                    } finally {
+
+                                        solutionGenerating = false
+                                    }
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(18.dp)
                         ) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                null
-                            )
 
-                            Spacer(Modifier.width(8.dp))
+                            if (solutionGenerating) {
 
-                            Text("Build This Solution")
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+
+                                Spacer(
+                                    Modifier.width(8.dp)
+                                )
+
+                                Text(
+                                    "Building solution..."
+                                )
+
+                            } else {
+
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    null
+                                )
+
+                                Spacer(
+                                    Modifier.width(8.dp)
+                                )
+
+                                Text(
+                                    "Build This Solution"
+                                )
+                            }
                         }
+                    }
+                }
+            }
+        }
+
+        solutionImageUrl?.let { generatedUrl ->
+
+            item {
+
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+
+                    Column(
+                        modifier = Modifier.padding(18.dp)
+                    ) {
+
+                        Text(
+                            "Solution Built",
+                            style =
+                                MaterialTheme.typography.titleLarge,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Spacer(
+                            Modifier.height(10.dp)
+                        )
+
+                        AsyncImage(
+                            model = generatedUrl,
+                            contentDescription =
+                                "RoomAI solution",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(360.dp),
+                            contentScale =
+                                ContentScale.Crop
+                        )
+
+                        Spacer(
+                            Modifier.height(10.dp)
+                        )
+
+                        Text(
+                            "This result was generated from the diagnosed room problems and the solution plan."
+                        )
                     }
                 }
             }
