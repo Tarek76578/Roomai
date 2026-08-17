@@ -471,7 +471,7 @@ fun RoomAIApp(
 
         NavHost(
             navController = nav,
-            startDestination = "home",
+            startDestination = "problem_first",
             modifier = Modifier.padding(padding)
         ) {
             composable("auth") {
@@ -488,6 +488,22 @@ fun RoomAIApp(
                     }
                 )
             }
+
+
+                    composable("problem_first") {
+
+                        RoomAIProblemFirstScreen(
+
+                            onContinueToDiagnosis = {
+
+                                navController.navigate("decision_engine")
+
+                            }
+
+                        )
+
+                    }
+
 
             composable("home") {
                 RoomAIHomeRedesigned(
