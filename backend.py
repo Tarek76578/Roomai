@@ -5,6 +5,7 @@ import tempfile
 import time
 import urllib.request
 import urllib.error
+import sqlite3
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -28,14 +29,50 @@ ROOMAI_PRO_MONTHLY_LIMIT = int(
     os.environ.get("ROOMAI_PRO_MONTHLY_LIMIT", "100")
 )
 
-# Temporary in-process usage store.
-# Production billing will move this to a persistent database
-# and authenticated user IDs before payments go live.
-USAGE = {}
+ROOMAI_DB = os.environ.get(
+    "ROOMAI_USAGE_DB",
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "roomai_usage.db"
+    )
+)
+
+# Pro entitlements are server-controlled.
+# Until Google Play Billing is connected, nobody becomes Pro
+# merely by sending plan=pro from the Android client.
+ROOMAI_PRO_DEVICE_IDS = {
+    x.strip()
+    for x in os.environ.get(
+        "ROOMAI_PRO_DEVICE_IDS",
+        ""
+    ).split(",")
+    if x.strip()
+}
+
+
+def db():
+    connection = sqlite3.connect(
+        ROOMAI_DB,
+        timeout=10
+    )
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS usage (
+            device_id TEXT NOT NULL,
+            month TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            reserved INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (device_id, month)
+        )
+    """)
+    connection.commit()
+    return connection
 
 
 def usage_key():
-    device_id = request.form.get("device_id", "").strip()
+    device_id = request.form.get(
+        "device_id",
+        ""
+    ).strip()
 
     if not device_id:
         device_id = request.headers.get(
@@ -54,12 +91,13 @@ def current_month():
 
 
 def get_plan():
-    plan = request.form.get(
-        "plan",
-        "free"
-    ).strip().lower()
+    device_id = usage_key()
 
-    return "pro" if plan == "pro" else "free"
+    # NEVER trust plan=pro from the Android client.
+    if device_id in ROOMAI_PRO_DEVICE_IDS:
+        return "pro"
+
+    return "free"
 
 
 def usage_status():
@@ -67,12 +105,47 @@ def usage_status():
     month = current_month()
     plan = get_plan()
 
-    bucket_key = (key, month)
-
-    used = USAGE.get(
-        bucket_key,
-        0
+    limit = (
+        ROOMAI_PRO_MONTHLY_LIMIT
+        if plan == "pro"
+        else ROOMAI_FREE_MONTHLY_LIMIT
     )
+
+    connection = db()
+
+    try:
+        row = connection.execute(
+            """
+            SELECT used, reserved
+            FROM usage
+            WHERE device_id = ?
+              AND month = ?
+            """,
+            (key, month)
+        ).fetchone()
+    finally:
+        connection.close()
+
+    used = row[0] if row else 0
+    reserved = row[1] if row else 0
+
+    return {
+        "plan": plan,
+        "used": used,
+        "reserved": reserved,
+        "limit": limit,
+        "remaining": max(
+            0,
+            limit - used - reserved
+        ),
+        "month": month
+    }
+
+
+def reserve_generation():
+    key = usage_key()
+    month = current_month()
+    plan = get_plan()
 
     limit = (
         ROOMAI_PRO_MONTHLY_LIMIT
@@ -80,36 +153,128 @@ def usage_status():
         else ROOMAI_FREE_MONTHLY_LIMIT
     )
 
-    return {
-        "plan": plan,
-        "used": used,
-        "limit": limit,
-        "remaining": max(0, limit - used),
-        "month": month
-    }
+    connection = db()
+
+    try:
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO usage(
+                device_id,
+                month,
+                used,
+                reserved
+            )
+            VALUES (?, ?, 0, 0)
+            """,
+            (key, month)
+        )
+
+        row = connection.execute(
+            """
+            SELECT used, reserved
+            FROM usage
+            WHERE device_id = ?
+              AND month = ?
+            """,
+            (key, month)
+        ).fetchone()
+
+        used = row[0]
+        reserved = row[1]
+
+        if used + reserved >= limit:
+            connection.rollback()
+
+            return False, {
+                "plan": plan,
+                "used": used,
+                "reserved": reserved,
+                "limit": limit,
+                "remaining": 0,
+                "month": month
+            }
+
+        connection.execute(
+            """
+            UPDATE usage
+            SET reserved = reserved + 1
+            WHERE device_id = ?
+              AND month = ?
+            """,
+            (key, month)
+        )
+
+        connection.commit()
+
+        return True, {
+            "plan": plan,
+            "used": used,
+            "reserved": reserved + 1,
+            "limit": limit,
+            "remaining": max(
+                0,
+                limit - used - reserved - 1
+            ),
+            "month": month
+        }
+
+    finally:
+        connection.close()
 
 
-def consume_generation():
-    status = usage_status()
-
-    if status["remaining"] <= 0:
-        return False, status
-
+def commit_generation():
     key = usage_key()
     month = current_month()
-    bucket_key = (key, month)
 
-    USAGE[bucket_key] = (
-        USAGE.get(bucket_key, 0) + 1
-    )
+    connection = db()
 
-    status["used"] += 1
-    status["remaining"] = max(
-        0,
-        status["limit"] - status["used"]
-    )
+    try:
+        connection.execute(
+            """
+            UPDATE usage
+            SET reserved = CASE
+                    WHEN reserved > 0
+                    THEN reserved - 1
+                    ELSE 0
+                END,
+                used = used + 1
+            WHERE device_id = ?
+              AND month = ?
+            """,
+            (key, month)
+        )
 
-    return True, status
+        connection.commit()
+
+    finally:
+        connection.close()
+
+
+def release_generation():
+    key = usage_key()
+    month = current_month()
+
+    connection = db()
+
+    try:
+        connection.execute(
+            """
+            UPDATE usage
+            SET reserved = CASE
+                    WHEN reserved > 0
+                    THEN reserved - 1
+                    ELSE 0
+                END
+            WHERE device_id = ?
+              AND month = ?
+            """,
+            (key, month)
+        )
+
+        connection.commit()
+
+    finally:
+        connection.close()
 
 
 def usage_response():
@@ -453,7 +618,7 @@ def diagnose():
 
 def process():
 
-    allowed, usage = consume_generation()
+    allowed, usage = reserve_generation()
 
     if not allowed:
         return jsonify({
@@ -461,18 +626,25 @@ def process():
             "code": "USAGE_LIMIT_REACHED",
             "plan": usage["plan"],
             "used": usage["used"],
+            "reserved": usage["reserved"],
             "limit": usage["limit"],
             "remaining": usage["remaining"],
             "month": usage["month"]
         }), 429
 
+    reservation_active = True
+
     if not KEY:
+        release_generation()
+        reservation_active = False
         return jsonify({
             "error":
             "MAGIC_HOUR_API_KEY missing"
         }), 500
 
     if "image" not in request.files:
+        release_generation()
+        reservation_active = False
         return jsonify({
             "error": "No image"
         }), 400
@@ -480,6 +652,8 @@ def process():
     image = request.files["image"]
 
     if not image.filename:
+        release_generation()
+        reservation_active = False
         return jsonify({
             "error": "Invalid image"
         }), 400
@@ -610,6 +784,10 @@ def process():
             prompt
         )
 
+        if reservation_active:
+            commit_generation()
+            reservation_active = False
+
         return jsonify({
             "status": "complete",
             "operation": operation,
@@ -618,6 +796,10 @@ def process():
         })
 
     except Exception as e:
+
+        if reservation_active:
+            release_generation()
+            reservation_active = False
 
         return jsonify({
             "error": str(e)
