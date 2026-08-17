@@ -443,8 +443,9 @@ fun RoomAIApp(
             modifier = Modifier.padding(padding)
         ) {
             composable("home") {
-                Home(
+                RoomAIHomeRedesigned(
                     nav = nav,
+                    loggedIn = true,
                     usage = usage
                 )
             }
