@@ -426,6 +426,7 @@ fun RoomAIApp(
     setDark: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
+
     var token by remember {
         mutableStateOf(roomAiToken(context))
     }
@@ -457,52 +458,84 @@ fun RoomAIApp(
 
     val nav = rememberNavController()
 
+    val backStackEntry by nav.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+
+    val topLevelRoutes = setOf(
+        "home",
+        "create",
+        "designs",
+        "menu"
+    )
+
+    val showBottomBar = currentRoute in topLevelRoutes
+
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                BottomItem(nav, "home", "Home", Icons.Default.Home)
-                BottomItem(nav, "create", "Create", Icons.Default.Add)
-                BottomItem(nav, "designs", "Designs", Icons.Default.PhotoLibrary)
-                BottomItem(nav, "menu", "Menu", Icons.Default.Menu)
+            if (showBottomBar) {
+                NavigationBar {
+                    BottomItem(
+                        nav = nav,
+                        route = "home",
+                        label = "Home",
+                        icon = Icons.Default.Home
+                    )
+
+                    BottomItem(
+                        nav = nav,
+                        route = "create",
+                        label = "Create",
+                        icon = Icons.Default.Add
+                    )
+
+                    BottomItem(
+                        nav = nav,
+                        route = "designs",
+                        label = "Designs",
+                        icon = Icons.Default.PhotoLibrary
+                    )
+
+                    BottomItem(
+                        nav = nav,
+                        route = "menu",
+                        label = "Menu",
+                        icon = Icons.Default.Menu
+                    )
+                }
             }
         }
     ) { padding ->
 
         NavHost(
             navController = nav,
-            startDestination = "problem_first",
+            startDestination = "home",
             modifier = Modifier.padding(padding)
         ) {
+
+            // ----------------------------------------------------
+            // Authentication
+            // ----------------------------------------------------
+
             composable("auth") {
                 AuthScreen(
-                    dark = false,
+                    dark = dark,
                     onAuthenticated = { newToken ->
                         saveRoomAiToken(context, newToken)
                         token = newToken
+
                         nav.navigate("home") {
                             popUpTo("auth") {
                                 inclusive = true
                             }
+                            launchSingleTop = true
                         }
                     }
                 )
             }
 
-
-                    composable("problem_first") {
-
-                        RoomAIProblemFirstScreen(
-
-                            onContinueToDiagnosis = {
-
-                                nav.navigate("decision_engine")
-
-                            }
-
-                        )
-
-                    }
-
+            // ----------------------------------------------------
+            // REAL HOME
+            // ----------------------------------------------------
 
             composable("home") {
                 RoomAIHomeRedesigned(
@@ -512,20 +545,59 @@ fun RoomAIApp(
                 )
             }
 
-            composable("growth") {
-                RoomAIGrowthCenter(
-                    onBack = { nav.popBackStack() },
-                    onCreate = { nav.navigate("create") }
+            // ----------------------------------------------------
+            // PROBLEM-FIRST FLOW
+            //
+            // This is no longer the app's root.
+            // It is entered deliberately from Home.
+            // ----------------------------------------------------
+
+            composable("problem_first") {
+                RoomAIProblemFirstScreen(
+                    onContinueToDiagnosis = {
+                        nav.navigate("decision_engine") {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
+
+            // ----------------------------------------------------
+            // GROWTH
+            // ----------------------------------------------------
+
+            composable("growth") {
+                RoomAIGrowthCenter(
+                    onBack = {
+                        nav.popBackStack()
+                    },
+                    onCreate = {
+                        nav.navigate("create") {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            // ----------------------------------------------------
+            // TOP LEVEL: CREATE
+            // ----------------------------------------------------
 
             composable("create") {
                 Create()
             }
 
+            // ----------------------------------------------------
+            // TOP LEVEL: DESIGNS
+            // ----------------------------------------------------
+
             composable("designs") {
                 Designs()
             }
+
+            // ----------------------------------------------------
+            // SECONDARY TOOLS
+            // ----------------------------------------------------
 
             composable("styles") {
                 Styles()
@@ -547,6 +619,10 @@ fun RoomAIApp(
                 RoomAIWorkspace(nav)
             }
 
+            // ----------------------------------------------------
+            // ROOM SOLVING FLOW
+            // ----------------------------------------------------
+
             composable("decision_engine") {
                 RoomAIDecisionEngine()
             }
@@ -559,10 +635,6 @@ fun RoomAIApp(
                 RoomAIMemory()
             }
 
-            composable("legacy_ai_studio") {
-                RoomAIPowerStudio()
-            }
-
             composable("diagnose") {
                 Diagnose()
             }
@@ -570,6 +642,19 @@ fun RoomAIApp(
             composable("professional") {
                 RoomAIProfessionalHome(nav)
             }
+
+            // ----------------------------------------------------
+            // Legacy studio route kept for compatibility.
+            // It is NOT a Home route.
+            // ----------------------------------------------------
+
+            composable("legacy_ai_studio") {
+                RoomAIPowerStudio()
+            }
+
+            // ----------------------------------------------------
+            // TOP LEVEL: MENU
+            // ----------------------------------------------------
 
             composable("menu") {
                 Menu(
@@ -579,6 +664,13 @@ fun RoomAIApp(
                         scope.launch {
                             roomAiLogout(context)
                             token = ""
+
+                            nav.navigate("home") {
+                                popUpTo("home") {
+                                    inclusive = true
+                                }
+                                launchSingleTop = true
+                            }
                         }
                     }
                 )
@@ -784,7 +876,9 @@ fun RoomAIHomeRedesigned(
                 title = "Analyze",
                 description = "Find room problems"
             ) {
-                nav.navigate("diagnose")
+                nav.navigate("problem_first") {
+                    launchSingleTop = true
+                }
             }
         }
 
@@ -1274,8 +1368,11 @@ private fun RowScope.BottomItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
+    val backStackEntry by nav.currentBackStackEntryAsState()
+    val selectedRoute = backStackEntry?.destination?.route
+
     NavigationBarItem(
-        selected = nav.currentBackStackEntry?.destination?.route == route,
+        selected = selectedRoute == route,
         onClick = {
             nav.navigate(route) {
                 popUpTo("home") {
@@ -1286,7 +1383,10 @@ private fun RowScope.BottomItem(
             }
         },
         icon = {
-            Icon(icon, contentDescription = label)
+            Icon(
+                imageVector = icon,
+                contentDescription = label
+            )
         },
         label = {
             Text(label)
