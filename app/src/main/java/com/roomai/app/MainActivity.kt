@@ -137,6 +137,12 @@ private const val BACKEND_URL =
 private const val DIAGNOSE_URL =
     "https://roomai-wagl.onrender.com/diagnose"
 
+private const val AUTH_BASE_URL =
+    "https://roomai-wagl.onrender.com"
+
+private const val ROOMAI_TOKEN_KEY = "auth_token"
+
+
 private const val PREFS = "roomai_designs"
 
 private const val ROOMAI_PLAN_PREFS = "roomai_account"
@@ -145,6 +151,102 @@ private const val ROOMAI_DEVICE_KEY = "device_id"
 
 private const val FREE_MONTHLY_LIMIT = 5
 private const val PRO_MONTHLY_LIMIT = 100
+
+private fun roomAiToken(context: Context): String {
+    return context.getSharedPreferences(
+        ROOMAI_PLAN_PREFS,
+        Context.MODE_PRIVATE
+    ).getString(
+        ROOMAI_TOKEN_KEY,
+        ""
+    ) ?: ""
+}
+
+private fun saveRoomAiToken(
+    context: Context,
+    token: String
+) {
+    context.getSharedPreferences(
+        ROOMAI_PLAN_PREFS,
+        Context.MODE_PRIVATE
+    ).edit()
+        .putString(ROOMAI_TOKEN_KEY, token)
+        .apply()
+}
+
+private fun clearRoomAiToken(context: Context) {
+    context.getSharedPreferences(
+        ROOMAI_PLAN_PREFS,
+        Context.MODE_PRIVATE
+    ).edit()
+        .remove(ROOMAI_TOKEN_KEY)
+        .apply()
+}
+
+private suspend fun roomAiAuthRequest(
+    endpoint: String,
+    email: String,
+    password: String,
+    context: Context,
+    includeDevice: Boolean
+): JSONObject = withContext(Dispatchers.IO) {
+
+    val connection =
+        URL(AUTH_BASE_URL + endpoint)
+            .openConnection() as HttpURLConnection
+
+    connection.requestMethod = "POST"
+    connection.doOutput = true
+    connection.connectTimeout = 30000
+    connection.readTimeout = 30000
+
+    connection.setRequestProperty(
+        "Content-Type",
+        "application/json"
+    )
+
+    val payload = JSONObject()
+        .put("email", email.trim())
+        .put("password", password)
+
+    if (includeDevice) {
+        payload.put(
+            "device_id",
+            roomAiDeviceId(context)
+        )
+    }
+
+    connection.outputStream.use { output ->
+        output.write(
+            payload.toString().toByteArray()
+        )
+    }
+
+    val code = connection.responseCode
+
+    val stream =
+        if (code in 200..299)
+            connection.inputStream
+        else
+            connection.errorStream
+
+    val response =
+        stream?.bufferedReader()?.use { it.readText() }
+            ?: """{"error":"Empty server response"}"""
+
+    if (code !in 200..299) {
+        val message = try {
+            JSONObject(response)
+                .optString("error", response)
+        } catch (_: Exception) {
+            response
+        }
+
+        throw Exception(message)
+    }
+
+    JSONObject(response)
+}
 
 private fun roomAiDeviceId(context: Context): String {
     val prefs = context.getSharedPreferences(
@@ -222,6 +324,21 @@ fun RoomAIApp(
     dark: Boolean,
     setDark: (Boolean) -> Unit
 ) {
+    val context = LocalContext.current
+    var token by remember {
+        mutableStateOf(roomAiToken(context))
+    }
+
+    if (token.isBlank()) {
+        AuthScreen(
+            dark = dark,
+            onAuthenticated = {
+                token = it
+            }
+        )
+        return
+    }
+
     val nav = rememberNavController()
 
     Scaffold(
@@ -294,6 +411,199 @@ fun RoomAIApp(
 
             composable("menu") {
                 Menu(dark, setDark)
+            }
+        }
+    }
+}
+
+@Composable
+fun AuthScreen(
+    dark: Boolean,
+    onAuthenticated: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var registerMode by remember {
+        mutableStateOf(false)
+    }
+
+    var email by remember {
+        mutableStateOf("")
+    }
+
+    var password by remember {
+        mutableStateOf("")
+    }
+
+    var loading by remember {
+        mutableStateOf(false)
+    }
+
+    var error by remember {
+        mutableStateOf("")
+    }
+
+    RoomAITheme(dark) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+
+                    Text(
+                        "RoomAI",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        if (registerMode)
+                            "Create your account"
+                        else
+                            "Welcome back"
+                    )
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = {
+                            email = it
+                            error = ""
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Email")
+                        },
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = {
+                            password = it
+                            error = ""
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Password")
+                        },
+                        singleLine = true
+                    )
+
+                    if (registerMode) {
+                        Text(
+                            "Password must contain at least 8 characters.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (error.isNotBlank()) {
+                        Text(
+                            error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            if (email.isBlank() ||
+                                password.isBlank()
+                            ) {
+                                error =
+                                    "Email and password are required."
+                                return@Button
+                            }
+
+                            if (registerMode &&
+                                password.length < 8
+                            ) {
+                                error =
+                                    "Password must contain at least 8 characters."
+                                return@Button
+                            }
+
+                            loading = true
+                            error = ""
+
+                            scope.launch {
+                                try {
+                                    val endpoint =
+                                        if (registerMode)
+                                            "/auth/register"
+                                        else
+                                            "/auth/login"
+
+                                    val result =
+                                        roomAiAuthRequest(
+                                            endpoint = endpoint,
+                                            email = email,
+                                            password = password,
+                                            context = context,
+                                            includeDevice = registerMode
+                                        )
+
+                                    val newToken =
+                                        result.getString("token")
+
+                                    saveRoomAiToken(
+                                        context,
+                                        newToken
+                                    )
+
+                                    onAuthenticated(newToken)
+
+                                } catch (e: Exception) {
+                                    error =
+                                        e.message
+                                            ?: "Authentication failed."
+                                } finally {
+                                    loading = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !loading
+                    ) {
+                        if (loading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                if (registerMode)
+                                    "Create account"
+                                else
+                                    "Sign in"
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = {
+                            registerMode = !registerMode
+                            error = ""
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (registerMode)
+                                "Already have an account? Sign in"
+                            else
+                                "New to RoomAI? Create account"
+                        )
+                    }
+                }
             }
         }
     }
@@ -958,6 +1268,17 @@ suspend fun generateDesign(
     connection.setRequestProperty(
         "Content-Type",
         "multipart/form-data; boundary=$boundary"
+    )
+
+    val authToken = roomAiToken(context)
+
+    if (authToken.isBlank()) {
+        throw Exception("Please sign in to continue.")
+    }
+
+    connection.setRequestProperty(
+        "Authorization",
+        "Bearer $authToken"
     )
 
     DataOutputStream(connection.outputStream).use { output ->
