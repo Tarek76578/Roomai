@@ -257,45 +257,46 @@ fun Home(nav: NavHostController) {
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp)
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            "AI Usage",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Text(
+                        "AI Usage",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
 
-                        Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
 
-                        Text(
-                            if (plan == "pro")
-                                "Pro • $limit generations/month"
-                            else
-                                "Free • $limit generations/month"
-                        )
+                    Text(
+                        if (plan == "pro")
+                            "Pro • $limit generations/month"
+                        else
+                            "Free • $limit generations/month"
+                    )
 
-                        Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(6.dp))
 
-                        LinearProgressIndicator(
-                            progress = { 0f },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    LinearProgressIndicator(
+                        progress = { 0f },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
 
-                        Text(
-                            "Usage is protected by the RoomAI backend."
-                        )
-                    }
+                    Text(
+                        "Usage is protected by the RoomAI backend."
+                    )
                 }
+            }
 
-                Spacer(Modifier.height(12.dp))
-
+            Spacer(Modifier.height(12.dp))
+        }
 
         item {
             Spacer(Modifier.height(8.dp))
