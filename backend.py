@@ -395,22 +395,40 @@ def commit_generation():
     connection = db()
 
     try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        row = connection.execute(
+            """
+            SELECT used, reserved
+            FROM usage
+            WHERE device_id = ?
+              AND month = ?
+            """,
+            (key, month)
+        ).fetchone()
+
+        if not row or row[1] <= 0:
+            connection.rollback()
+            return False
+
         connection.execute(
             """
             UPDATE usage
-            SET reserved = CASE
-                    WHEN reserved > 0
-                    THEN reserved - 1
-                    ELSE 0
-                END,
+            SET reserved = reserved - 1,
                 used = used + 1
             WHERE device_id = ?
               AND month = ?
+              AND reserved > 0
             """,
             (key, month)
         )
 
         connection.commit()
+        return True
+
+    except Exception:
+        connection.rollback()
+        raise
 
     finally:
         connection.close()

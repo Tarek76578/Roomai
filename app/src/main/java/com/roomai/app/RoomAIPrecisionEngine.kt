@@ -280,6 +280,20 @@ object RoomAIPrecisionEngine {
             "multipart/form-data; boundary=$boundary"
         )
 
+        val authToken = roomAiToken(context)
+
+        if (authToken.isNotBlank()) {
+            connection.setRequestProperty(
+                "Authorization",
+                "Bearer $authToken"
+            )
+        } else {
+            connection.setRequestProperty(
+                "X-RoomAI-Device",
+                roomAiDeviceId(context)
+            )
+        }
+
         DataOutputStream(connection.outputStream).use { output ->
 
             val bytes =
@@ -370,6 +384,20 @@ object RoomAIPrecisionEngine {
             "Content-Type",
             "multipart/form-data; boundary=$boundary"
         )
+
+        val authToken = roomAiToken(context)
+
+        if (authToken.isNotBlank()) {
+            connection.setRequestProperty(
+                "Authorization",
+                "Bearer $authToken"
+            )
+        } else {
+            connection.setRequestProperty(
+                "X-RoomAI-Device",
+                roomAiDeviceId(context)
+            )
+        }
 
         DataOutputStream(connection.outputStream).use { output ->
 
