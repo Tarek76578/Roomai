@@ -159,7 +159,7 @@ private const val ROOMAI_DEVICE_KEY = "device_id"
 private const val FREE_MONTHLY_LIMIT = 5
 private const val PRO_MONTHLY_LIMIT = 100
 
-private fun roomAiToken(context: Context): String {
+internal fun roomAiToken(context: Context): String {
     return context.getSharedPreferences(
         ROOMAI_PLAN_PREFS,
         Context.MODE_PRIVATE
@@ -304,10 +304,17 @@ private suspend fun roomAiUsage(context: Context): RoomAIUsage =
         connection.connectTimeout = 30000
         connection.readTimeout = 30000
 
-        connection.setRequestProperty(
-            "Authorization",
-            "Bearer $token"
-        )
+        if (token.isNotBlank()) {
+            connection.setRequestProperty(
+                "Authorization",
+                "Bearer $token"
+            )
+        } else {
+            connection.setRequestProperty(
+                "X-RoomAI-Device",
+                roomAiDeviceId(context)
+            )
+        }
 
         val code = connection.responseCode
 
@@ -343,7 +350,7 @@ private suspend fun roomAiUsage(context: Context): RoomAIUsage =
         )
     }
 
-private fun roomAiDeviceId(context: Context): String {
+internal fun roomAiDeviceId(context: Context): String {
     val prefs = context.getSharedPreferences(
         ROOMAI_PLAN_PREFS,
         Context.MODE_PRIVATE
@@ -470,8 +477,9 @@ fun RoomAIApp(
             composable("auth") {
                 AuthScreen(
                     dark = false,
-                    onAuthenticated = { token ->
-                        saveRoomAiToken(context, token)
+                    onAuthenticated = { newToken ->
+                        saveRoomAiToken(context, newToken)
+                        token = newToken
                         nav.navigate("home") {
                             popUpTo("auth") {
                                 inclusive = true
@@ -484,7 +492,7 @@ fun RoomAIApp(
             composable("home") {
                 RoomAIHomeRedesigned(
                     nav = nav,
-                    loggedIn = true,
+                    loggedIn = token.isNotBlank(),
                     usage = usage
                 )
             }
