@@ -59,7 +59,7 @@ ROOMAI_SESSION_DAYS = int(
 )
 
 EMAIL_RE = re.compile(
-    r"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+    r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 )
 
 
