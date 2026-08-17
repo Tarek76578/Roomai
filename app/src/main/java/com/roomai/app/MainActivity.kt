@@ -248,6 +248,64 @@ private suspend fun roomAiAuthRequest(
     JSONObject(response)
 }
 
+
+private suspend fun roomAiUsage(context: Context): RoomAIUsage =
+    withContext(Dispatchers.IO) {
+
+        val token = roomAiToken(context)
+
+        if (token.isBlank()) {
+            throw Exception("Please sign in to continue.")
+        }
+
+        val connection =
+            URL(AUTH_BASE_URL + "/usage")
+                .openConnection() as HttpURLConnection
+
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.connectTimeout = 30000
+        connection.readTimeout = 30000
+
+        connection.setRequestProperty(
+            "Authorization",
+            "Bearer $token"
+        )
+
+        val code = connection.responseCode
+
+        val stream =
+            if (code in 200..299)
+                connection.inputStream
+            else
+                connection.errorStream
+
+        val response =
+            stream?.bufferedReader()?.use { it.readText() }
+                ?: throw Exception("Empty usage response")
+
+        if (code == 401) {
+            clearRoomAiToken(context)
+            throw Exception("SESSION_EXPIRED")
+        }
+
+        if (code !in 200..299) {
+            throw Exception(response)
+        }
+
+        val json = JSONObject(response)
+
+        RoomAIUsage(
+            plan = json.optString("plan", "free"),
+            used = json.optInt("used", 0),
+            limit = json.optInt("limit", FREE_MONTHLY_LIMIT),
+            remaining = json.optInt(
+                "remaining",
+                FREE_MONTHLY_LIMIT
+            )
+        )
+    }
+
 private fun roomAiDeviceId(context: Context): String {
     val prefs = context.getSharedPreferences(
         ROOMAI_PLAN_PREFS,
@@ -339,6 +397,31 @@ fun RoomAIApp(
         return
     }
 
+    val scope = rememberCoroutineScope()
+
+    var usage by remember {
+        mutableStateOf(RoomAIUsage())
+    }
+
+    var usageLoading by remember {
+        mutableStateOf(true)
+    }
+
+    LaunchedEffect(token) {
+        usageLoading = true
+
+        try {
+            usage = roomAiUsage(context)
+        } catch (e: Exception) {
+            if (e.message == "SESSION_EXPIRED") {
+                clearRoomAiToken(context)
+                token = ""
+            }
+        } finally {
+            usageLoading = false
+        }
+    }
+
     val nav = rememberNavController()
 
     Scaffold(
@@ -358,7 +441,10 @@ fun RoomAIApp(
             modifier = Modifier.padding(padding)
         ) {
             composable("home") {
-                Home(nav)
+                Home(
+                    nav = nav,
+                    usage = usage
+                )
             }
 
             composable("create") {
@@ -633,15 +719,13 @@ private fun RowScope.BottomItem(
 }
 
 @Composable
-fun Home(nav: NavHostController) {
+fun Home(
+    nav: NavHostController,
+    usage: RoomAIUsage
+) {
 
-    val context = LocalContext.current
-    val plan = roomAiPlan(context)
-    val limit = if (plan == "pro") {
-        PRO_MONTHLY_LIMIT
-    } else {
-        FREE_MONTHLY_LIMIT
-    }
+    val plan = usage.plan
+    val limit = usage.limit
 
 
     LazyColumn(
@@ -662,6 +746,22 @@ fun Home(nav: NavHostController) {
                         "AI Usage",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        if (plan == "pro")
+                            "PRO"
+                        else
+                            "FREE"
+                    )
+
+                    Text(
+                        "${usage.remaining} generations remaining"
+                    )
+
+                    Text(
+                        "${usage.used} / $limit used this month",
+                        style = MaterialTheme.typography.bodySmall
                     )
 
                     Spacer(Modifier.height(4.dp))
