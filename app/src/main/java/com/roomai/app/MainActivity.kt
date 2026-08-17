@@ -1275,10 +1275,14 @@ private fun RowScope.BottomItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
     NavigationBarItem(
-        selected = false,
+        selected = nav.currentBackStackEntry?.destination?.route == route,
         onClick = {
             nav.navigate(route) {
+                popUpTo("home") {
+                    saveState = true
+                }
                 launchSingleTop = true
+                restoreState = true
             }
         },
         icon = {
