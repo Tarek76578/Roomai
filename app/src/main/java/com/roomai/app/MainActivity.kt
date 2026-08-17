@@ -2120,7 +2120,31 @@ suspend fun diagnoseRoom(
         "multipart/form-data; boundary=$boundary"
     )
 
+    // Keep /diagnose identity consistent with /generate.
+    // Authenticated users are identified by their server-side session.
+    // Guests are identified by the installation/device key.
+    val authToken = roomAiToken(context)
+
+    if (authToken.isNotBlank()) {
+        connection.setRequestProperty(
+            "Authorization",
+            "Bearer $authToken"
+        )
+    }
+
+    connection.setRequestProperty(
+        "X-RoomAI-Device",
+        roomAiDeviceId(context)
+    )
+
     DataOutputStream(connection.outputStream).use { output ->
+
+        writeTextPart(
+            output,
+            boundary,
+            "device_id",
+            roomAiDeviceId(context)
+        )
 
         val bytes =
             context.contentResolver
