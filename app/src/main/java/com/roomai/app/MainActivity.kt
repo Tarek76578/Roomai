@@ -1469,7 +1469,7 @@ fun Home(
 
             StepCard("1", "Upload", "Choose a photo of your room.")
             StepCard("2", "Customize", "Select room type, style and instructions.")
-            StepCard("3", "Generate", "RoomAI sends the request to the AI backend.")
+            StepCard("3", "Create solution", "RoomAI sends the request to the AI backend.")
             StepCard("4", "Save", "Your generated design is added to My Designs.")
         }
     }
@@ -1485,7 +1485,7 @@ fun FeatureGrid(nav: NavHostController) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             SmallFeature(
-                "AI Styles",
+                "Solve my room",
                 Icons.Default.Palette,
                 Modifier.weight(1f)
             ) {
@@ -1493,7 +1493,7 @@ fun FeatureGrid(nav: NavHostController) {
             }
 
             SmallFeature(
-                "AI Enhance",
+                "Fix a room problem",
                 Icons.Default.AutoFixHigh,
                 Modifier.weight(1f)
             ) {
@@ -1829,7 +1829,7 @@ fun Create() {
                 } else {
                     Icon(Icons.Default.AutoAwesome, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Generate Design")
+                    Text("Solve my room")
                 }
             }
         }
@@ -5080,7 +5080,7 @@ fun ToolPage(
                                 }
 
                                 Text(
-                                    if (showBefore) "Original Room" else "AI Design",
+                                    if (showBefore) "Original Room" else "Solve my room",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -5118,7 +5118,7 @@ fun ToolPage(
     @Composable
 fun Styles() {
     ToolPage(
-        title = "AI Styles",
+        title = "Solve my room",
         subtitle = "Choose a style and let AI redesign your room.",
         operation = "generate",
         options = listOf(
@@ -5137,7 +5137,7 @@ fun Styles() {
 @Composable
 fun Enhance() {
     ToolPage(
-        title = "AI Enhance",
+        title = "Fix a room problem",
         subtitle = "Improve your existing room image with AI.",
         operation = "enhance",
         options = listOf(
