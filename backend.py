@@ -1276,11 +1276,8 @@ def home():
 
 @app.post("/usage")
 def usage_route():
-    user, error = require_user()
-
-    if error:
-        return error
-
+    # Guest users use device-based quota.
+    # Logged-in users use account-based quota.
     return usage_response()
 
 

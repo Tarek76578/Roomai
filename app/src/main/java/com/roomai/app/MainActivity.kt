@@ -5241,7 +5241,7 @@ fun Menu(
 
                             Text(
                                 if (savedEmail.isBlank())
-                                    "Signed in"
+                                    "Guest • Login to save your designs"
                                 else
                                     savedEmail,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
