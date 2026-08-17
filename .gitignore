@@ -13,3 +13,7 @@ roomai_usage.db
 *.db-shm
 *.db-wal
 .DS_Store
+
+.roomai-backups/
+roomai-source.txt
+roomai.py
