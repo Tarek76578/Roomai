@@ -114,6 +114,10 @@ fun RoomAIDecisionEngine() {
         mutableStateOf<RoomDiagnosis?>(null)
     }
 
+    var solutionBrief by remember {
+        mutableStateOf<RoomAISolutionBrief?>(null)
+    }
+
     var loading by remember {
         mutableStateOf(false)
     }
@@ -137,6 +141,7 @@ fun RoomAIDecisionEngine() {
 
             imageUri = uri
             diagnosis = null
+            solutionBrief = null
             error = null
         }
 
@@ -156,6 +161,15 @@ fun RoomAIDecisionEngine() {
 
     val remaining =
         (budget - planned).coerceAtLeast(0)
+
+    val currentSolution =
+        result?.let {
+            buildRoomAISolutionBrief(
+                diagnosis = it,
+                budgetPlan = plan,
+                selectedGoal = RoomAIProblemFlow.label()
+            )
+        }
 
     LazyColumn(
         modifier = Modifier
@@ -739,6 +753,120 @@ fun RoomAIDecisionEngine() {
 
                         Text(
                             "Next: each recommendation will become a one-tap verified Precision Edit."
+                        )
+                    }
+                }
+            }
+        }
+
+        currentSolution?.let { solution ->
+
+            item {
+
+                Spacer(Modifier.height(8.dp))
+
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+
+                    Column(
+                        modifier = Modifier.padding(18.dp)
+                    ) {
+
+                        Text(
+                            "Your Solution",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(Modifier.height(6.dp))
+
+                        Text(
+                            solution.goal,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(Modifier.height(6.dp))
+
+                        Text(solution.summary)
+
+                        Spacer(Modifier.height(10.dp))
+
+                        Text(
+                            "Planned budget: ${"%,d".format(solution.totalBudget)} DZD"
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        solution.actions.take(5).forEachIndexed { index, action ->
+
+                            Text(
+                                "${index + 1}. ${action.title}",
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                "${action.action} • " +
+                                    "${action.priority} • " +
+                                    "${"%,d".format(action.budget)} DZD"
+                            )
+
+                            Spacer(Modifier.height(6.dp))
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Button(
+                            onClick = {
+                                solutionBrief = solution
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                null
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Text("Build This Solution")
+                        }
+                    }
+                }
+            }
+        }
+
+        solutionBrief?.let { solution ->
+
+            item {
+
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+
+                    Column(
+                        modifier = Modifier.padding(18.dp)
+                    ) {
+
+                        Text(
+                            "Solution Ready",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(Modifier.height(6.dp))
+
+                        Text(
+                            "The generation step will use the diagnosis and action plan, not a generic redesign prompt."
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        Text(
+                            solution.generationBrief()
                         )
                     }
                 }
