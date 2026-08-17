@@ -728,69 +728,82 @@ fun RoomAIHomeRedesigned(
         Spacer(Modifier.height(22.dp))
 
         // ---------------------------------------------------------
-        // Hero
+        // PROBLEM-FIRST HOME
+        // No legacy room image.
+        // The Home starts with the user's problem, not a showcase.
         // ---------------------------------------------------------
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(270.dp),
-            shape = RoundedCornerShape(30.dp)
+                .clickable {
+                    nav.navigate("problem_first") {
+                        launchSingleTop = true
+                    }
+                },
+            shape = RoundedCornerShape(26.dp)
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Image(
-                    painter = painterResource(id = R.drawable.living_room),
-                    contentDescription = "Interior design",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.Transparent,
-                                    Color(0xCC101512)
-                                )
-                            )
-                        )
-                )
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(20.dp)
+            Column(
+                modifier = Modifier.padding(22.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Transform your space.",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    Text(
-                        text = "Design it. Understand it. Improve it.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.88f)
-                    )
-
-                    Spacer(Modifier.height(14.dp))
-
-                    Button(
-                        onClick = { nav.navigate("create") },
-                        shape = RoundedCornerShape(16.dp)
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.padding(14.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.width(14.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "What is wrong with your room?",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
 
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.height(4.dp))
 
-                        Text("Create my room")
+                        Text(
+                            text = "Tell RoomAI what you need to solve and get a practical plan.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
+
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null
+                    )
+                }
+
+                Spacer(Modifier.height(18.dp))
+
+                Button(
+                    onClick = {
+                        nav.navigate("problem_first") {
+                            launchSingleTop = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Text("Solve a room problem")
                 }
             }
         }
