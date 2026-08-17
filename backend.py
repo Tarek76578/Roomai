@@ -156,6 +156,11 @@ def reserve_generation():
     connection = db()
 
     try:
+        # Lock the SQLite database before checking/updating usage.
+        # This prevents two simultaneous requests from consuming
+        # the same remaining generation.
+        connection.execute("BEGIN IMMEDIATE")
+
         connection.execute(
             """
             INSERT OR IGNORE INTO usage(
@@ -218,9 +223,12 @@ def reserve_generation():
             "month": month
         }
 
+    except Exception:
+        connection.rollback()
+        raise
+
     finally:
         connection.close()
-
 
 def commit_generation():
     key = usage_key()
