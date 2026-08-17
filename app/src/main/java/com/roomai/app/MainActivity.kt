@@ -7,6 +7,12 @@ import androidx.compose.ui.draw.clip
 import android.util.Log
 import com.roomai.app.ui.RoomAITheme
 import android.content.Context
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -49,6 +55,81 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
 import org.json.JSONObject
+
+
+private const val ROOMAI_TEST_INTERSTITIAL_AD =
+    "ca-app-pub-3940256099942544/1033173712"
+
+private object RoomAIAds {
+
+    private var interstitialAd: InterstitialAd? = null
+    private var loading = false
+
+    fun initialize(context: Context) {
+        MobileAds.initialize(context)
+        load(context)
+    }
+
+    private fun load(context: Context) {
+        if (loading || interstitialAd != null) return
+
+        loading = true
+
+        InterstitialAd.load(
+            context,
+            ROOMAI_TEST_INTERSTITIAL_AD,
+            AdRequest.Builder().build(),
+            object : InterstitialAdLoadCallback() {
+
+                override fun onAdLoaded(ad: InterstitialAd) {
+                    loading = false
+                    interstitialAd = ad
+
+                    ad.fullScreenContentCallback =
+                        object : FullScreenContentCallback() {
+
+                            override fun onAdDismissedFullScreenContent() {
+                                interstitialAd = null
+                                load(context)
+                            }
+
+                            override fun onAdFailedToShowFullScreenContent(
+                                adError: com.google.android.gms.ads.AdError
+                            ) {
+                                interstitialAd = null
+                                load(context)
+                            }
+                        }
+                }
+
+                override fun onAdFailedToLoad(error: LoadAdError) {
+                    loading = false
+                    interstitialAd = null
+                }
+            }
+        )
+    }
+
+    fun showAfterGeneration(context: Context) {
+        if (roomAiPlan(context) == "pro") return
+
+        val activity = context as? android.app.Activity ?: return
+        val ad = interstitialAd
+
+        if (ad == null) {
+            load(context)
+            return
+        }
+
+        interstitialAd = null
+
+        activity.runOnUiThread {
+            ad.show(activity)
+        }
+
+        load(context)
+    }
+}
 
 private const val BACKEND_URL =
     "https://roomai-wagl.onrender.com/generate"
@@ -120,6 +201,8 @@ data class SavedDesign(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        RoomAIAds.initialize(this)
 
         setContent {
             var dark by remember { mutableStateOf(false) }
@@ -955,6 +1038,9 @@ suspend fun generateDesign(
         .find(response)
         ?.groupValues
         ?.get(1)
+        ?.also {
+            RoomAIAds.showAfterGeneration(context)
+        }
         ?: throw Exception("Backend returned no image URL")
 }
 
