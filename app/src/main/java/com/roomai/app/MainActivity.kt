@@ -496,7 +496,7 @@ fun RoomAIApp(
 
                             onContinueToDiagnosis = {
 
-                                navController.navigate("decision_engine")
+                                nav.navigate("decision_engine")
 
                             }
 
