@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -56,6 +57,58 @@ private const val DIAGNOSE_URL =
     "https://roomai-wagl.onrender.com/diagnose"
 
 private const val PREFS = "roomai_designs"
+
+private const val ROOMAI_PLAN_PREFS = "roomai_account"
+private const val ROOMAI_PLAN_KEY = "plan"
+private const val ROOMAI_DEVICE_KEY = "device_id"
+
+private const val FREE_MONTHLY_LIMIT = 5
+private const val PRO_MONTHLY_LIMIT = 100
+
+private fun roomAiDeviceId(context: Context): String {
+    val prefs = context.getSharedPreferences(
+        ROOMAI_PLAN_PREFS,
+        Context.MODE_PRIVATE
+    )
+
+    val existing = prefs.getString(
+        ROOMAI_DEVICE_KEY,
+        null
+    )
+
+    if (!existing.isNullOrBlank()) {
+        return existing
+    }
+
+    val id = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ANDROID_ID
+    ) ?: UUID.randomUUID().toString()
+
+    prefs.edit()
+        .putString(ROOMAI_DEVICE_KEY, id)
+        .apply()
+
+    return id
+}
+
+private fun roomAiPlan(context: Context): String {
+    return context.getSharedPreferences(
+        ROOMAI_PLAN_PREFS,
+        Context.MODE_PRIVATE
+    ).getString(
+        ROOMAI_PLAN_KEY,
+        "free"
+    ) ?: "free"
+}
+
+data class RoomAIUsage(
+    val plan: String = "free",
+    val used: Int = 0,
+    val limit: Int = FREE_MONTHLY_LIMIT,
+    val remaining: Int = FREE_MONTHLY_LIMIT
+)
+
 
 data class SavedDesign(
     val id: String,
@@ -188,12 +241,62 @@ private fun RowScope.BottomItem(
 
 @Composable
 fun Home(nav: NavHostController) {
+
+    val context = LocalContext.current
+    val plan = roomAiPlan(context)
+    val limit = if (plan == "pro") {
+        PRO_MONTHLY_LIMIT
+    } else {
+        FREE_MONTHLY_LIMIT
+    }
+
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            "AI Usage",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            if (plan == "pro")
+                                "Pro • $limit generations/month"
+                            else
+                                "Free • $limit generations/month"
+                        )
+
+                        Spacer(Modifier.height(6.dp))
+
+                        LinearProgressIndicator(
+                            progress = { 0f },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            "Usage is protected by the RoomAI backend."
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+
         item {
             Spacer(Modifier.height(8.dp))
 
@@ -781,6 +884,20 @@ suspend fun generateDesign(
         writeTextPart(output, boundary, "selection", selection)
         writeTextPart(output, boundary, "prompt", userPrompt)
 
+        writeTextPart(
+            output,
+            boundary,
+            "device_id",
+            roomAiDeviceId(context)
+        )
+
+        writeTextPart(
+            output,
+            boundary,
+            "plan",
+            roomAiPlan(context)
+        )
+
         val bytes =
             context.contentResolver
                 .openInputStream(uri)
@@ -824,6 +941,12 @@ suspend fun generateDesign(
             ?: throw Exception("Empty backend response")
 
     if (code !in 200..299) {
+        if (code == 429 && response.contains("USAGE_LIMIT_REACHED")) {
+            throw Exception(
+                "Monthly AI generation limit reached. Upgrade to Pro for more generations."
+            )
+        }
+
         throw Exception(response)
     }
 

@@ -16,6 +16,111 @@ GEMINI_KEY_31 = os.environ.get("GEMINI_API_KEY_31")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 GEMINI_MODEL_31 = os.environ.get("GEMINI_MODEL_31", "gemini-3.1-flash-lite")
 
+# ============================================================
+# RoomAI Cost Control / Free-Pro foundation
+# ============================================================
+
+ROOMAI_FREE_MONTHLY_LIMIT = int(
+    os.environ.get("ROOMAI_FREE_MONTHLY_LIMIT", "5")
+)
+
+ROOMAI_PRO_MONTHLY_LIMIT = int(
+    os.environ.get("ROOMAI_PRO_MONTHLY_LIMIT", "100")
+)
+
+# Temporary in-process usage store.
+# Production billing will move this to a persistent database
+# and authenticated user IDs before payments go live.
+USAGE = {}
+
+
+def usage_key():
+    device_id = request.form.get("device_id", "").strip()
+
+    if not device_id:
+        device_id = request.headers.get(
+            "X-RoomAI-Device",
+            ""
+        ).strip()
+
+    if not device_id:
+        device_id = request.remote_addr or "unknown"
+
+    return device_id[:128]
+
+
+def current_month():
+    return time.strftime("%Y-%m")
+
+
+def get_plan():
+    plan = request.form.get(
+        "plan",
+        "free"
+    ).strip().lower()
+
+    return "pro" if plan == "pro" else "free"
+
+
+def usage_status():
+    key = usage_key()
+    month = current_month()
+    plan = get_plan()
+
+    bucket_key = (key, month)
+
+    used = USAGE.get(
+        bucket_key,
+        0
+    )
+
+    limit = (
+        ROOMAI_PRO_MONTHLY_LIMIT
+        if plan == "pro"
+        else ROOMAI_FREE_MONTHLY_LIMIT
+    )
+
+    return {
+        "plan": plan,
+        "used": used,
+        "limit": limit,
+        "remaining": max(0, limit - used),
+        "month": month
+    }
+
+
+def consume_generation():
+    status = usage_status()
+
+    if status["remaining"] <= 0:
+        return False, status
+
+    key = usage_key()
+    month = current_month()
+    bucket_key = (key, month)
+
+    USAGE[bucket_key] = (
+        USAGE.get(bucket_key, 0) + 1
+    )
+
+    status["used"] += 1
+    status["remaining"] = max(
+        0,
+        status["limit"] - status["used"]
+    )
+
+    return True, status
+
+
+def usage_response():
+    status = usage_status()
+
+    return jsonify({
+        "status": "ok",
+        **status
+    })
+
+
 
 def api_request(url, method="GET", data=None, headers=None):
     req = urllib.request.Request(
@@ -348,6 +453,19 @@ def diagnose():
 
 def process():
 
+    allowed, usage = consume_generation()
+
+    if not allowed:
+        return jsonify({
+            "error": "Generation limit reached",
+            "code": "USAGE_LIMIT_REACHED",
+            "plan": usage["plan"],
+            "used": usage["used"],
+            "limit": usage["limit"],
+            "remaining": usage["remaining"],
+            "month": usage["month"]
+        }), 429
+
     if not KEY:
         return jsonify({
             "error":
@@ -495,7 +613,8 @@ def process():
         return jsonify({
             "status": "complete",
             "operation": operation,
-            "image_url": result
+            "image_url": result,
+            "usage": usage_status()
         })
 
     except Exception as e:
@@ -533,6 +652,11 @@ def home():
             "diagnose"
         ]
     })
+
+
+@app.post("/usage")
+def usage_route():
+    return usage_response()
 
 
 @app.get("/health")
