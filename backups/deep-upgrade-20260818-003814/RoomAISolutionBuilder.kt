@@ -85,7 +85,7 @@ data class RoomAISolutionBrief(
 
         builder.appendLine()
         builder.appendLine(
-            "Maximum planning envelope: ${totalBudget} DZD"
+            "Maximum planned budget: ${totalBudget} DZD"
         )
 
         builder.appendLine()

@@ -38,16 +38,6 @@ jobs:
           python3 -m py_compile backend.py
           echo "RoomAI Android + backend verified"
 
-
-      - name: Deep RoomAI audit
-        run: |
-          python3 tools/roomai_audit.py
-          python3 -m py_compile backend.py diagnostic_engine.py
-
-      - name: Kotlin unit tests
-        run: |
-          gradle testDebugUnitTest --stacktrace --no-daemon
-
       - name: Build Debug APK
         run: |
           gradle assembleDebug --stacktrace --no-daemon

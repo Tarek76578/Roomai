@@ -864,7 +864,7 @@ fun RoomAIHomeRedesigned(
                 title = "Bad lighting",
                 description = "Improve light"
             ) {
-                openProblem(RoomAIProblemFlow.LIGHTING)
+                openProblem(RoomAIProblemFlow.SPECIFIC_CHANGE)
             }
         }
 

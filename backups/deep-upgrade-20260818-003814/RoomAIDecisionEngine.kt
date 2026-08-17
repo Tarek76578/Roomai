@@ -612,7 +612,7 @@ fun RoomAIDecisionEngine() {
             item {
 
                 Text(
-                    "Budget Planning Envelope",
+                    "Smart Budget Plan",
                     style =
                         MaterialTheme.typography
                             .titleLarge,
@@ -712,7 +712,7 @@ fun RoomAIDecisionEngine() {
                         )
 
                         Text(
-                            "Allocated planning envelope: ${"%,d".format(
+                            "Planned: ${"%,d".format(
                                 planned
                             )} DZD"
                         )
@@ -804,7 +804,7 @@ fun RoomAIDecisionEngine() {
                         Spacer(Modifier.height(10.dp))
 
                         Text(
-                            "Planning envelope: ${"%,d".format(solution.totalBudget)} DZD"
+                            "Planned budget: ${"%,d".format(solution.totalBudget)} DZD"
                         )
 
                         Spacer(Modifier.height(10.dp))
@@ -974,7 +974,7 @@ fun RoomAIDecisionEngine() {
                         )
 
                         Text(
-                            "This result was generated from the diagnosed room problems and the solution plan. Verify dimensions and fit before purchasing."
+                            "This result was generated from the diagnosed room problems and the solution plan."
                         )
                     }
                 }
