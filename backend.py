@@ -6,6 +6,10 @@ import time
 import urllib.request
 import urllib.error
 import sqlite3
+import hashlib
+import secrets
+import hmac
+import re
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -50,6 +54,126 @@ ROOMAI_PRO_DEVICE_IDS = {
 }
 
 
+ROOMAI_SESSION_DAYS = int(
+    os.environ.get("ROOMAI_SESSION_DAYS", "30")
+)
+
+EMAIL_RE = re.compile(
+    r"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+)
+
+
+def normalize_email(email):
+    return email.strip().lower()
+
+
+def hash_password(password, salt=None):
+    if salt is None:
+        salt = secrets.token_bytes(16)
+
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        120000
+    )
+
+    return salt.hex() + ":" + digest.hex()
+
+
+def verify_password(password, stored):
+    try:
+        salt_hex, digest_hex = stored.split(":", 1)
+
+        salt = bytes.fromhex(salt_hex)
+
+        candidate = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            120000
+        ).hex()
+
+        return hmac.compare_digest(
+            candidate,
+            digest_hex
+        )
+
+    except Exception:
+        return False
+
+
+def auth_token():
+    header = request.headers.get(
+        "Authorization",
+        ""
+    ).strip()
+
+    if not header.startswith("Bearer "):
+        return ""
+
+    return header[7:].strip()
+
+
+def authenticated_user(required=True):
+    token = auth_token()
+
+    if not token:
+        if required:
+            return None
+        return None
+
+    connection = db()
+
+    try:
+        row = connection.execute(
+            """
+            SELECT
+                users.id,
+                users.email,
+                users.plan,
+                users.device_id
+            FROM sessions
+            JOIN users
+              ON users.id = sessions.user_id
+            WHERE sessions.token = ?
+              AND sessions.expires_at > ?
+            """,
+            (
+                token,
+                int(time.time())
+            )
+        ).fetchone()
+
+        if not row:
+            return None
+
+        return {
+            "id": row[0],
+            "email": row[1],
+            "plan": row[2],
+            "device_id": row[3]
+        }
+
+    finally:
+        connection.close()
+
+
+def require_user():
+    user = authenticated_user()
+
+    if not user:
+        return None, (
+            jsonify({
+                "error": "Authentication required",
+                "code": "AUTH_REQUIRED"
+            }),
+            401
+        )
+
+    return user, None
+
+
 def db():
     connection = sqlite3.connect(
         ROOMAI_DB,
@@ -64,11 +188,40 @@ def db():
             PRIMARY KEY (device_id, month)
         )
     """)
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            device_id TEXT NOT NULL UNIQUE,
+            plan TEXT NOT NULL DEFAULT 'free',
+            created_at INTEGER NOT NULL
+        )
+    """)
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """)
+
     connection.commit()
     return connection
 
 
 def usage_key():
+    user = authenticated_user()
+
+    if user:
+        return "user:" + str(user["id"])
+
+    # Authentication is required for quota-protected endpoints.
+    # Keep the fallback only for internal compatibility.
     device_id = request.form.get(
         "device_id",
         ""
@@ -91,9 +244,14 @@ def current_month():
 
 
 def get_plan():
+    user = authenticated_user()
+
+    if user:
+        return "pro" if user["plan"] == "pro" else "free"
+
+    # Legacy/internal fallback.
     device_id = usage_key()
 
-    # NEVER trust plan=pro from the Android client.
     if device_id in ROOMAI_PRO_DEVICE_IDS:
         return "pro"
 
@@ -626,6 +784,11 @@ def diagnose():
 
 def process():
 
+    user, error = require_user()
+
+    if error:
+        return error
+
     allowed, usage = reserve_generation()
 
     if not allowed:
@@ -823,6 +986,273 @@ def process():
                 pass
 
 
+@app.post("/auth/register")
+def auth_register():
+    data = request.get_json(silent=True) or {}
+
+    email = normalize_email(
+        str(data.get("email", ""))
+    )
+
+    password = str(
+        data.get("password", "")
+    )
+
+    device_id = str(
+        data.get("device_id", "")
+    ).strip()
+
+    if not EMAIL_RE.match(email):
+        return jsonify({
+            "error": "Invalid email",
+            "code": "INVALID_EMAIL"
+        }), 400
+
+    if len(password) < 8:
+        return jsonify({
+            "error": "Password must contain at least 8 characters",
+            "code": "INVALID_PASSWORD"
+        }), 400
+
+    if not device_id:
+        return jsonify({
+            "error": "Device ID required",
+            "code": "DEVICE_ID_REQUIRED"
+        }), 400
+
+    device_id = device_id[:128]
+
+    connection = db()
+
+    try:
+        existing_email = connection.execute(
+            """
+            SELECT id
+            FROM users
+            WHERE email = ?
+            """,
+            (email,)
+        ).fetchone()
+
+        if existing_email:
+            return jsonify({
+                "error": "Email already registered",
+                "code": "EMAIL_EXISTS"
+            }), 409
+
+        existing_device = connection.execute(
+            """
+            SELECT id, email
+            FROM users
+            WHERE device_id = ?
+            """,
+            (device_id,)
+        ).fetchone()
+
+        if existing_device:
+            return jsonify({
+                "error": "This device already has an account",
+                "code": "DEVICE_ALREADY_REGISTERED"
+            }), 409
+
+        password_hash = hash_password(password)
+        now = int(time.time())
+
+        cursor = connection.execute(
+            """
+            INSERT INTO users(
+                email,
+                password_hash,
+                device_id,
+                plan,
+                created_at
+            )
+            VALUES (?, ?, ?, 'free', ?)
+            """,
+            (
+                email,
+                password_hash,
+                device_id,
+                now
+            )
+        )
+
+        user_id = cursor.lastrowid
+
+        token = secrets.token_urlsafe(48)
+        expires_at = now + (
+            ROOMAI_SESSION_DAYS * 86400
+        )
+
+        connection.execute(
+            """
+            INSERT INTO sessions(
+                token,
+                user_id,
+                expires_at,
+                created_at
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                token,
+                user_id,
+                expires_at,
+                now
+            )
+        )
+
+        connection.commit()
+
+        return jsonify({
+            "status": "ok",
+            "token": token,
+            "user": {
+                "id": user_id,
+                "email": email,
+                "plan": "free"
+            }
+        })
+
+    except sqlite3.IntegrityError:
+        connection.rollback()
+
+        return jsonify({
+            "error": "Account already exists",
+            "code": "ACCOUNT_EXISTS"
+        }), 409
+
+    finally:
+        connection.close()
+
+
+@app.post("/auth/login")
+def auth_login():
+    data = request.get_json(silent=True) or {}
+
+    email = normalize_email(
+        str(data.get("email", ""))
+    )
+
+    password = str(
+        data.get("password", "")
+    )
+
+    if not email or not password:
+        return jsonify({
+            "error": "Email and password are required",
+            "code": "LOGIN_REQUIRED"
+        }), 400
+
+    connection = db()
+
+    try:
+        row = connection.execute(
+            """
+            SELECT
+                id,
+                email,
+                password_hash,
+                plan
+            FROM users
+            WHERE email = ?
+            """,
+            (email,)
+        ).fetchone()
+
+        if not row or not verify_password(
+            password,
+            row[2]
+        ):
+            return jsonify({
+                "error": "Invalid email or password",
+                "code": "INVALID_CREDENTIALS"
+            }), 401
+
+        now = int(time.time())
+        token = secrets.token_urlsafe(48)
+
+        expires_at = now + (
+            ROOMAI_SESSION_DAYS * 86400
+        )
+
+        connection.execute(
+            """
+            INSERT INTO sessions(
+                token,
+                user_id,
+                expires_at,
+                created_at
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                token,
+                row[0],
+                expires_at,
+                now
+            )
+        )
+
+        connection.commit()
+
+        return jsonify({
+            "status": "ok",
+            "token": token,
+            "user": {
+                "id": row[0],
+                "email": row[1],
+                "plan": row[3]
+            }
+        })
+
+    finally:
+        connection.close()
+
+
+@app.get("/auth/me")
+def auth_me():
+    user, error = require_user()
+
+    if error:
+        return error
+
+    return jsonify({
+        "status": "ok",
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "plan": user["plan"]
+        }
+    })
+
+
+@app.post("/auth/logout")
+def auth_logout():
+    token = auth_token()
+
+    if token:
+        connection = db()
+
+        try:
+            connection.execute(
+                """
+                DELETE FROM sessions
+                WHERE token = ?
+                """,
+                (token,)
+            )
+
+            connection.commit()
+
+        finally:
+            connection.close()
+
+    return jsonify({
+        "status": "ok"
+    })
+
+
 @app.get("/")
 def home():
 
@@ -846,6 +1276,11 @@ def home():
 
 @app.post("/usage")
 def usage_route():
+    user, error = require_user()
+
+    if error:
+        return error
+
     return usage_response()
 
 
