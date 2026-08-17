@@ -295,10 +295,6 @@ private suspend fun roomAiUsage(context: Context): RoomAIUsage =
 
         val token = roomAiToken(context)
 
-        if (token.isBlank()) {
-            throw Exception("Please sign in to continue.")
-        }
-
         val connection =
             URL(AUTH_BASE_URL + "/usage")
                 .openConnection() as HttpURLConnection
@@ -426,16 +422,6 @@ fun RoomAIApp(
     val context = LocalContext.current
     var token by remember {
         mutableStateOf(roomAiToken(context))
-    }
-
-    if (token.isBlank()) {
-        AuthScreen(
-            dark = dark,
-            onAuthenticated = {
-                token = it
-            }
-        )
-        return
     }
 
     val scope = rememberCoroutineScope()
@@ -1936,13 +1922,16 @@ suspend fun generateDesign(
 
     val authToken = roomAiToken(context)
 
-    if (authToken.isBlank()) {
-        throw Exception("Please sign in to continue.")
+    if (authToken.isNotBlank()) {
+        connection.setRequestProperty(
+            "Authorization",
+            "Bearer $authToken"
+        )
     }
 
     connection.setRequestProperty(
-        "Authorization",
-        "Bearer $authToken"
+        "X-RoomAI-Device",
+        roomAiDeviceId(context)
     )
 
     DataOutputStream(connection.outputStream).use { output ->

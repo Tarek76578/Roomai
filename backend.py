@@ -784,10 +784,10 @@ def diagnose():
 
 def process():
 
-    user, error = require_user()
-
-    if error:
-        return error
+    # Login is optional.
+    # Authenticated users are keyed by user id.
+    # Guests are keyed by their device id through usage_key().
+    user = authenticated_user()
 
     allowed, usage = reserve_generation()
 
