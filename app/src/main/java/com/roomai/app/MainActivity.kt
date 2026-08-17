@@ -256,7 +256,6 @@ private suspend fun roomAiAuthRequest(
 }
 
 
-
 private suspend fun roomAiLogout(context: Context) =
     withContext(Dispatchers.IO) {
 
@@ -587,7 +586,6 @@ fun RoomAIApp(
         }
     }
 }
-
 
 
 @Composable
@@ -1292,204 +1290,6 @@ private fun RowScope.BottomItem(
     )
 }
 
-@Composable
-fun Home(
-    nav: NavHostController,
-    usage: RoomAIUsage
-) {
-
-    val plan = usage.plan
-    val limit = usage.limit
-
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        "AI Usage",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        if (plan == "pro")
-                            "PRO"
-                        else
-                            "FREE"
-                    )
-
-                    Text(
-                        "${usage.remaining} of ${usage.limit} generations remaining"
-                    )
-
-                    Text(
-                        "${usage.used} / $limit used this month",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    Text(
-                        if (plan == "pro")
-                            "Pro • $limit generations/month"
-                        else
-                            "Free • $limit generations/month"
-                    )
-
-                    Spacer(Modifier.height(6.dp))
-
-                    LinearProgressIndicator(
-                        progress = { 0f },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    Text(
-                        "Usage is protected by the RoomAI backend."
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-        }
-
-        item {
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                "RoomAI",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                "AI Interior Designer",
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-
-        item {
-            ElevatedCard(
-                onClick = { nav.navigate("diagnose") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(42.dp)
-                    )
-
-                    Spacer(Modifier.width(16.dp))
-
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            "RoomAI Diagnose",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            "Find problems and risks before you change or buy anything."
-                        )
-                    }
-
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = null
-                    )
-                }
-            }
-        }
-
-        item {
-            ElevatedCard(
-                onClick = { nav.navigate("create") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        null,
-                        modifier = Modifier.size(46.dp)
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        "Redesign your room",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(Modifier.height(6.dp))
-
-                    Text(
-                        "Upload a room photo, choose a style and let AI create a new interior."
-                    )
-
-                    Spacer(Modifier.height(18.dp))
-
-                    Button(
-                        onClick = { nav.navigate("create") }
-                    ) {
-                        Icon(Icons.Default.AutoAwesome, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Start Designing")
-                    }
-                }
-            }
-        }
-
-        item {
-            Text(
-                "AI Tools",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        item {
-            FeatureGrid(nav)
-        }
-
-        item {
-            Text(
-                "How RoomAI works",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            StepCard("1", "Upload", "Choose a photo of your room.")
-            StepCard("2", "Customize", "Select room type, style and instructions.")
-            StepCard("3", "Create solution", "RoomAI sends the request to the AI backend.")
-            StepCard("4", "Save", "Your generated design is added to My Designs.")
-        }
-    }
-}
 
 @Composable
 fun FeatureGrid(nav: NavHostController) {
@@ -2594,7 +2394,6 @@ data class ToolOption(
     val title: String,
     val description: String
 )
-
 
 
 @Composable
