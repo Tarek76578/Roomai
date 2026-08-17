@@ -2,9 +2,12 @@ name: RoomAI Full Upgrade
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   upgrade:
@@ -20,26 +23,34 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Verify project
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.0'
+
+      - name: Verify RoomAI
         run: |
+          set -e
           test -f app/src/main/java/com/roomai/app/MainActivity.kt
           test -f backend.py
           test -f app/build.gradle
-          echo "RoomAI project verified"
+          python3 -m py_compile backend.py
+          echo "RoomAI source verification OK"
 
       - name: Build APK
         run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+          set -e
+          gradle assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: RoomAI-full-upgrade-debug
+          name: RoomAI-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
 
-      - name: Build summary
+      - name: Success
         run: |
-          echo "======================================"
-          echo "RoomAI build completed successfully"
-          echo "======================================"
+          echo "========================================"
+          echo "ROOMAI BUILD SUCCESS"
+          echo "========================================"
