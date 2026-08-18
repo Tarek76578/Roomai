@@ -629,6 +629,60 @@ def usage_response():
 
 
 
+def magic_hour_signed_upload(upload_url, image_data, content_type):
+    """
+    Upload to Magic Hour's pre-signed storage URL.
+
+    This is deliberately separate from api_request():
+    the signed URL is object storage, not a JSON API endpoint.
+    A successful PUT may legitimately return an empty body.
+    """
+    req = urllib.request.Request(
+        upload_url,
+        data=image_data,
+        headers={
+            "Content-Type": content_type,
+        },
+        method="PUT",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=90) as response:
+            status = getattr(response, "status", 200)
+            response.read()
+
+            if not 200 <= status < 300:
+                raise RuntimeError(
+                    "Magic Hour signed upload failed: HTTP %s"
+                    % status
+                )
+
+            return True
+
+    except urllib.error.HTTPError as exc:
+        try:
+            detail = exc.read().decode(
+                "utf-8",
+                errors="replace"
+            )[:500]
+        except Exception:
+            detail = ""
+
+        raise RuntimeError(
+            "Magic Hour signed upload failed: HTTP %s%s"
+            % (
+                exc.code,
+                (": " + detail) if detail else "",
+            )
+        ) from exc
+
+    except urllib.error.URLError as exc:
+        raise RuntimeError(
+            "Magic Hour signed upload network failure: %s"
+            % exc.reason
+        ) from exc
+
+
 def api_request(
     url,
     method="GET",
@@ -780,12 +834,10 @@ def run_editor(image_path, ext, prompt):
         "webp": "image/webp"
     }.get(ext, "image/jpeg")
 
-    api_request(
+    magic_hour_signed_upload(
         item["upload_url"],
-        "PUT",
         image_data,
-        {"Content-Type": content_type},
-        allow_empty=True
+        content_type,
     )
 
     payload = {
