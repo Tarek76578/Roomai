@@ -22,6 +22,7 @@ import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Looper
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -72,69 +73,121 @@ private object RoomAIAds {
     private var interstitialAd: InterstitialAd? = null
     private var loading = false
 
+    /*
+     * Google Mobile Ads UI APIs must be called from the main thread.
+     * Generation/network work remains on Dispatchers.IO.
+     */
+
     fun initialize(context: Context) {
-        MobileAds.initialize(context)
-        load(context)
+        val activity = context as? android.app.Activity
+
+        if (activity == null) {
+            Log.w("RoomAIAds", "No Activity available for AdMob initialization")
+            return
+        }
+
+        activity.runOnUiThread {
+            MobileAds.initialize(activity) {
+                load(activity)
+            }
+        }
     }
 
     private fun load(context: Context) {
+        /*
+         * This function is intentionally Main-Thread only.
+         */
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            val activity = context as? android.app.Activity
+            if (activity != null) {
+                activity.runOnUiThread {
+                    load(activity)
+                }
+            }
+            return
+        }
+
         if (loading || interstitialAd != null) return
+
+        val activity = context as? android.app.Activity
+            ?: return
 
         loading = true
 
         InterstitialAd.load(
-            context,
+            activity,
             ROOMAI_INTERSTITIAL_AD_ID,
             AdRequest.Builder().build(),
             object : InterstitialAdLoadCallback() {
 
                 override fun onAdLoaded(ad: InterstitialAd) {
-                    loading = false
-                    interstitialAd = ad
+                    /*
+                     * AdMob callbacks normally arrive on Main, but keep
+                     * state changes explicitly on Main for safety.
+                     */
+                    activity.runOnUiThread {
+                        loading = false
+                        interstitialAd = ad
 
-                    ad.fullScreenContentCallback =
-                        object : FullScreenContentCallback() {
+                        ad.fullScreenContentCallback =
+                            object : FullScreenContentCallback() {
 
-                            override fun onAdDismissedFullScreenContent() {
-                                interstitialAd = null
-                                load(context)
+                                override fun onAdDismissedFullScreenContent() {
+                                    activity.runOnUiThread {
+                                        interstitialAd = null
+                                        load(activity)
+                                    }
+                                }
+
+                                override fun onAdFailedToShowFullScreenContent(
+                                    adError: com.google.android.gms.ads.AdError
+                                ) {
+                                    activity.runOnUiThread {
+                                        interstitialAd = null
+                                        load(activity)
+                                    }
+                                }
                             }
-
-                            override fun onAdFailedToShowFullScreenContent(
-                                adError: com.google.android.gms.ads.AdError
-                            ) {
-                                interstitialAd = null
-                                load(context)
-                            }
-                        }
+                    }
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
-                    loading = false
-                    interstitialAd = null
+                    activity.runOnUiThread {
+                        loading = false
+                        interstitialAd = null
+                    }
                 }
             }
         )
     }
 
     fun showAfterGeneration(context: Context) {
+        val activity = context as? android.app.Activity
+            ?: return
+
+        /*
+         * roomAiPlan() is local SharedPreferences work and does not need
+         * the UI thread. The actual AdMob operations do.
+         */
         if (roomAiPlan(context) == "pro") return
 
-        val activity = context as? android.app.Activity ?: return
-        val ad = interstitialAd
-
-        if (ad == null) {
-            load(context)
-            return
-        }
-
-        interstitialAd = null
-
         activity.runOnUiThread {
-            ad.show(activity)
-        }
+            val ad = interstitialAd
 
-        load(context)
+            if (ad == null) {
+                load(activity)
+                return@runOnUiThread
+            }
+
+            interstitialAd = null
+
+            ad.show(activity)
+
+            /*
+             * Do not call load() from the IO generation coroutine.
+             * The dismissal callback above will safely reload it on Main.
+             */
+        }
     }
 }
 
@@ -146,6 +199,77 @@ private const val DIAGNOSE_URL =
 
 private const val AUTH_BASE_URL =
     "https://roomai-wagl.onrender.com"
+
+/*
+ * RoomAI HTTP response hardening.
+ *
+ * The backend protocol is JSON. If Render, a proxy, or an upstream
+ * service accidentally returns HTML, never display raw HTML parsing
+ * errors such as "HTML Head..." to the user.
+ */
+private fun roomAiReadHttpResponse(
+    connection: HttpURLConnection
+): String {
+    val code = connection.responseCode
+
+    val stream =
+        if (code in 200..299)
+            connection.inputStream
+        else
+            connection.errorStream
+
+    val body =
+        stream?.bufferedReader()?.use { it.readText() }
+            ?: ""
+
+    val trimmed = body.trim()
+    val lower = trimmed.lowercase()
+
+    val isHtml =
+        lower.startsWith("<!doctype") ||
+        lower.startsWith("<html") ||
+        lower.startsWith("<head") ||
+        lower.contains("<html") ||
+        lower.contains("<head")
+
+    if (isHtml) {
+        throw Exception(
+            if (code in 500..599) {
+                "RoomAI server is temporarily unavailable. Please try again."
+            } else {
+                "RoomAI received an unexpected server response. Please try again."
+            }
+        )
+    }
+
+    if (trimmed.isBlank()) {
+        throw Exception(
+            "RoomAI server returned an empty response."
+        )
+    }
+
+    return trimmed
+}
+
+private fun roomAiJsonError(
+    response: String,
+    fallback: String
+): String {
+    return try {
+        val json = JSONObject(response)
+
+        json.optString(
+            "error",
+            json.optString(
+                "message",
+                fallback
+            )
+        ).ifBlank { fallback }
+
+    } catch (_: Exception) {
+        fallback
+    }
+}
 
 private const val ROOMAI_TOKEN_KEY = "auth_token"
 
@@ -241,15 +365,14 @@ private suspend fun roomAiAuthRequest(
 
     val code = connection.responseCode
 
-    val stream =
-        if (code in 200..299)
-            connection.inputStream
-        else
-            connection.errorStream
-
     val response =
-        stream?.bufferedReader()?.use { it.readText() }
-            ?: """{"error":"Empty server response"}"""
+        try {
+            roomAiReadHttpResponse(connection)
+        } catch (e: Exception) {
+            throw Exception(
+                e.message ?: "RoomAI server response error"
+            )
+        }
 
     if (code !in 200..299) {
         val message = try {
@@ -342,15 +465,8 @@ private suspend fun roomAiUsage(context: Context): RoomAIUsage =
 
         val code = connection.responseCode
 
-        val stream =
-            if (code in 200..299)
-                connection.inputStream
-            else
-                connection.errorStream
-
         val response =
-            stream?.bufferedReader()?.use { it.readText() }
-                ?: throw Exception("Empty usage response")
+            roomAiReadHttpResponse(connection)
 
         if (code == 401) {
             clearRoomAiToken(context)
@@ -702,6 +818,9 @@ fun RoomAIApp(
 
             composable("menu") {
                 Menu(
+                    nav = nav,
+                    usage = usage,
+                    usageLoading = usageLoading,
                     loggedIn = token.isNotBlank(),
                     dark = dark,
                     setDark = setDark,
@@ -848,15 +967,166 @@ fun RoomAIHomeRedesigned(
 
         Spacer(Modifier.height(28.dp))
 
+
         // =====================================================
-        // NO DUPLICATE HOME BUTTONS
+        // SIMPLE HOME DISCOVERY
         //
-        // Create / Designs / Menu already exist in the
-        // application's bottom navigation.
+        // Home answers one question:
+        // "What do I want to do with my room?"
+        //
+        // Diagnose remains the primary action.
         // =====================================================
 
         Text(
-            text = "Your other areas are available from the navigation bar.",
+            text = "What do you want to do?",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        Text(
+            text = "Choose a goal. RoomAI will open the right workflow.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    nav.navigate("decision_engine") {
+                        launchSingleTop = true
+                    }
+                },
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        "Solve a room problem",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        "Identify the important problem and decide what is worth fixing."
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Build,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    nav.navigate("create") {
+                        launchSingleTop = true
+                    }
+                },
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        "Create & improve my room",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        "Create a new design or improve the room you already have."
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    nav.navigate("designs") {
+                        launchSingleTop = true
+                    }
+                },
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        "My designs",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        "Open your previous room designs and continue working."
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.PhotoLibrary,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    nav.navigate("professional") {
+                        launchSingleTop = true
+                    }
+                },
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        "Professional",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        "Use deeper workflows for professional interior decisions."
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Work,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "More tools are available inside each workflow.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -3545,7 +3815,7 @@ fun Diagnose() {
         item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
+                shape = MaterialTheme.shapes.large
             ) {
                 Row(
                     modifier = Modifier.padding(18.dp),
@@ -3673,7 +3943,7 @@ fun Diagnose() {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 if (loading) {
                     CircularProgressIndicator(
@@ -3699,7 +3969,7 @@ fun Diagnose() {
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
@@ -3899,7 +4169,7 @@ fun Diagnose() {
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = MaterialTheme.shapes.medium
                             ) {
                                 if (fixingProblem == problem.title) {
                                     CircularProgressIndicator(
@@ -3916,7 +4186,7 @@ fun Diagnose() {
                                     )
 
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Fix Highest Priority Problem")
+                                    Text("Fix this priority problem")
                                 }
                             }
                         }
@@ -3936,7 +4206,7 @@ fun Diagnose() {
                 items(orderedProblems) { problem ->
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Column(
                             modifier = Modifier.padding(18.dp)
@@ -4025,7 +4295,7 @@ fun Diagnose() {
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = MaterialTheme.shapes.medium
                             ) {
                                 if (fixingProblem == problem.title) {
                                     CircularProgressIndicator(
@@ -4042,7 +4312,7 @@ fun Diagnose() {
                                     )
 
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Fix This Problem")
+                                    Text("Fix this problem")
                                 }
                             }
 
@@ -4073,7 +4343,7 @@ fun Diagnose() {
                 item {
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Column(
                             modifier = Modifier.padding(18.dp)
@@ -4095,7 +4365,9 @@ fun Diagnose() {
                             Spacer(Modifier.height(6.dp))
 
                             Text(
-                                "Your room already has a strong foundation. RoomAI can still suggest style and upgrade ideas."
+                                "Your room already has a strong foundation. RoomAI can still suggest style and upgrade ideas.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -4114,7 +4386,7 @@ fun Diagnose() {
                 items(result.risks) { risk ->
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Column(
                             modifier = Modifier.padding(18.dp)
@@ -4152,7 +4424,9 @@ fun Diagnose() {
                             Text(
                                 risk.message.ifBlank {
                                     "RoomAI detected something that should be reviewed."
-                                }
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -4218,7 +4492,7 @@ fun Diagnose() {
                         fixedProblemTitle = null
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Icon(
                         Icons.Default.Refresh,
@@ -4745,155 +5019,303 @@ fun Products() {
 
 @Composable
 fun Menu(
+    nav: NavHostController,
+    usage: RoomAIUsage,
+    usageLoading: Boolean,
     dark: Boolean,
     setDark: (Boolean) -> Unit,
     loggedIn: Boolean,
     onLogin: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    val savedEmail =
+        context.getSharedPreferences(
+            ROOMAI_PLAN_PREFS,
+            Context.MODE_PRIVATE
+        ).getString(
+            "account_email",
+            ""
+        ).orEmpty()
+
+    fun go(route: String) {
+        nav.navigate(route) {
+            launchSingleTop = true
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+
         item {
             Text(
-                "Settings",
-                style = MaterialTheme.typography.headlineMedium,
+                "Me",
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                "Your account, usage, designs and help.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
+        // =====================================================
+        // ACCOUNT
+        // =====================================================
 
         item {
-            val context = LocalContext.current
-            val savedEmail =
-                context.getSharedPreferences(
-                    ROOMAI_PLAN_PREFS,
-                    Context.MODE_PRIVATE
-                ).getString(
-                    "account_email",
-                    ""
-                ).orEmpty()
-
-            Card(
+            ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(22.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(18.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.padding(12.dp)
-                            )
-                        }
+                    Text(
+                        "Account",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
 
-                        Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                "Account",
-                                fontWeight = FontWeight.Bold
-                            )
+                    Text(
+                        if (savedEmail.isBlank())
+                            "Guest account"
+                        else
+                            savedEmail,
+                        fontWeight = FontWeight.Medium
+                    )
 
-                            Text(
-                                if (savedEmail.isBlank())
-                                    "Guest • Login to save your designs"
-                                else
-                                    savedEmail,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Spacer(Modifier.height(4.dp))
+
+                    Text(
+                        if (loggedIn)
+                            "Your account is connected."
+                        else
+                            "Guest mode. Log in to keep your account connected.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
                     Spacer(Modifier.height(14.dp))
 
                     OutlinedButton(
-                          modifier = Modifier.fillMaxWidth(),
-                          onClick = {
-                              if (loggedIn) {
-                                  onLogout()
-                              } else {
-                                  onLogin()
-                              }
-                          }
-                      ) {
-                          Icon(
-                              if (loggedIn)
-                                  Icons.Default.Logout
-                              else
-                                  Icons.Default.Login,
-                              contentDescription = null
-                          )
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            if (loggedIn) onLogout() else onLogin()
+                        }
+                    ) {
+                        Icon(
+                            if (loggedIn)
+                                Icons.Default.Logout
+                            else
+                                Icons.Default.Login,
+                            contentDescription = null
+                        )
 
-                          Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(8.dp))
 
-                          Text(
-                              if (loggedIn)
-                                  "Log out"
-                              else
-                                  "Log in"
-                          )
-                      }
+                        Text(
+                            if (loggedIn)
+                                "Log out"
+                            else
+                                "Log in"
+                        )
+                    }
                 }
             }
         }
 
+        // =====================================================
+        // USAGE
+        // =====================================================
+
         item {
-            ListItem(
-                headlineContent = {
-                    Text("Dark Mode")
-                },
-                leadingContent = {
-                    Icon(Icons.Default.DarkMode, null)
-                },
-                trailingContent = {
-                    Switch(
-                        checked = dark,
-                        onCheckedChange = setDark
-                    )
-                }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "Usage",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            if (usageLoading)
+                                "Checking your current usage..."
+                            else
+                                "${usage.used} / ${usage.limit} generations used this month • ${usage.remaining} remaining"
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.DataUsage,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // MY DESIGNS
+        // =====================================================
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        go("designs")
+                    },
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "My designs",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "View and continue your room designs."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // HELP
+        // =====================================================
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        go("growth")
+                    },
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "Help & next steps",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "Get guidance on what to do next with your room."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.HelpOutline,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // SETTINGS
+        // =====================================================
+
+        item {
+            Text(
+                "Settings",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
         }
 
         item {
-            ListItem(
-                headlineContent = {
-                    Text("AI Interior Designer")
-                },
-                supportingContent = {
-                    Text("RoomAI")
-                },
-                leadingContent = {
-                    Icon(Icons.Default.AutoAwesome, null)
-                }
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text("Dark Mode")
+                    },
+                    supportingContent = {
+                        Text(
+                            if (dark)
+                                "Dark appearance is enabled."
+                            else
+                                "Use a darker interface."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.DarkMode,
+                            contentDescription = null
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = dark,
+                            onCheckedChange = setDark
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // ABOUT
+        // =====================================================
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "About RoomAI",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "Solve the room problem before spending money."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
         }
 
         item {
-            ListItem(
-                headlineContent = {
-                    Text("Design Library")
-                },
-                supportingContent = {
-                    Text("Generated designs are stored locally.")
-                },
-                leadingContent = {
-                    Icon(Icons.Default.PhotoLibrary, null)
-                }
-            )
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

@@ -6,6 +6,7 @@ on:
       - main
       - fix/auth-guest-quota-ux-clean
       - agent/roomai-ux-unified
+      - agent/roomai-master-pass-20260818
   workflow_dispatch:
 
 permissions:
