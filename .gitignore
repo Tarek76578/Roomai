@@ -38,3 +38,9 @@ roomai_usage.db
 .env.*
 *.jks
 *.keystore
+# RoomAI local audit/development artifacts
+.roomai-audit/
+.roomai-v5-work/
+.roomai-audit-report.txt
+*.backup-before-*
+backups/pre-final-cleanup-*/
