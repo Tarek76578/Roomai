@@ -1724,7 +1724,52 @@ Rules:
             result["candidates"][0]["content"]["parts"][0]["text"]
         )
 
-        return json.loads(text)
+        # Gemini is requested to return JSON, but production responses
+        # can occasionally contain markdown fences or trailing data.
+        # Extract the first complete JSON object instead of requiring
+        # the entire response to be a single JSON document.
+        cleaned = str(text).strip()
+
+        if cleaned.startswith("```"):
+            lines = cleaned.splitlines()
+
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+
+            cleaned = "\n".join(lines).strip()
+
+        try:
+            return json.loads(cleaned)
+
+        except json.JSONDecodeError:
+            decoder = json.JSONDecoder()
+
+            start = cleaned.find("{")
+
+            if start < 0:
+                raise RuntimeError(
+                    "Gemini verification returned no JSON object"
+                )
+
+            try:
+                parsed, _ = decoder.raw_decode(
+                    cleaned[start:]
+                )
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    "Invalid Gemini verification JSON: %s"
+                    % exc
+                )
+
+            if not isinstance(parsed, dict):
+                raise RuntimeError(
+                    "Gemini verification JSON must be an object"
+                )
+
+            return parsed
 
     try:
         return call_model(GEMINI_MODEL, GEMINI_KEY)
