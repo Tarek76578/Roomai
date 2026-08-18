@@ -1,0 +1,12 @@
+android.enableJetifier=true
+android.nonTransitiveRClass=true
+android.useAndroidX=true
+
+org.gradle.caching=true
+org.gradle.parallel=false
+org.gradle.workers.max=1
+org.gradle.daemon=false
+
+# Termux/mobile-safe memory configuration.
+# Production builds run on GitHub Actions.
+org.gradle.jvmargs=-Xmx768m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8

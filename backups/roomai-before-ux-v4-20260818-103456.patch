@@ -1,0 +1,854 @@
+diff --git a/app/build.gradle b/app/build.gradle
+index 33cbb5c..120ddd3 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -16,7 +16,9 @@ android {
+         versionName '2.0'
+ 
+         manifestPlaceholders = [
+-            roomAiAdmobAppId: roomAiAdmobAppId
++            roomAiAdmobAppId:
++                project.findProperty("ROOMAI_ADMOB_APP_ID")
++                    ?: "ca-app-pub-3940256099942544~3347511713"
+         ]
+     }
+ 
+@@ -25,20 +27,12 @@ android {
+         buildConfig true
+     }
+ 
+-    def roomAiAdmobAppId =
+-        project.findProperty("ROOMAI_ADMOB_APP_ID")
+-            ?: "ca-app-pub-3940256099942544~3347511713"
+-
+-    def roomAiInterstitialAdId =
+-        project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")
+-            ?: "ca-app-pub-3940256099942544/1033173712"
+-
+     buildTypes {
+         debug {
+             buildConfigField(
+                 "String",
+                 "ROOMAI_INTERSTITIAL_AD_ID",
+-                "\"${roomAiInterstitialAdId}\""
++                "\"${project.findProperty("ROOMAI_INTERSTITIAL_AD_ID") ?: "ca-app-pub-3940256099942544/1033173712"}\""
+             )
+         }
+ 
+@@ -53,7 +47,7 @@ android {
+             buildConfigField(
+                 "String",
+                 "ROOMAI_INTERSTITIAL_AD_ID",
+-                "\"${roomAiInterstitialAdId}\""
++                "\"${project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")}\""
+             )
+         }
+     }
+diff --git a/app/src/main/java/com/roomai/app/MainActivity.kt b/app/src/main/java/com/roomai/app/MainActivity.kt
+index 411e94c..d169b9d 100644
+--- a/app/src/main/java/com/roomai/app/MainActivity.kt
++++ b/app/src/main/java/com/roomai/app/MainActivity.kt
+@@ -853,193 +853,6 @@ fun RoomAIHomeRedesigned(
+     }
+ }
+ 
+-@Composable
+-private fun RoomAIProblemQuickCard(
+-    modifier: Modifier = Modifier,
+-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+-    title: String,
+-    description: String,
+-    onClick: () -> Unit
+-) {
+-    Card(
+-        modifier = modifier
+-            .height(126.dp)
+-            .clickable { onClick() },
+-        shape = RoundedCornerShape(20.dp)
+-    ) {
+-        Column(
+-            modifier = Modifier.padding(15.dp)
+-        ) {
+-            Surface(
+-                shape = RoundedCornerShape(12.dp),
+-                color = MaterialTheme.colorScheme.secondaryContainer
+-            ) {
+-                Icon(
+-                    imageVector = icon,
+-                    contentDescription = null,
+-                    modifier = Modifier.padding(9.dp)
+-                )
+-            }
+-
+-            Spacer(Modifier.height(9.dp))
+-
+-            Text(
+-                text = title,
+-                style = MaterialTheme.typography.titleSmall,
+-                fontWeight = FontWeight.Bold
+-            )
+-
+-            Text(
+-                text = description,
+-                style = MaterialTheme.typography.bodySmall,
+-                color = MaterialTheme.colorScheme.onSurfaceVariant
+-            )
+-        }
+-    }
+-}
+-
+-@Composable
+-private fun RoomAIStepCard(
+-    number: String,
+-    title: String,
+-    description: String
+-) {
+-    Card(
+-        modifier = Modifier.fillMaxWidth(),
+-        shape = RoundedCornerShape(18.dp)
+-    ) {
+-        Row(
+-            modifier = Modifier
+-                .fillMaxWidth()
+-                .padding(15.dp),
+-            verticalAlignment = Alignment.CenterVertically
+-        ) {
+-            Surface(
+-                shape = RoundedCornerShape(12.dp),
+-                color = MaterialTheme.colorScheme.primaryContainer
+-            ) {
+-                Text(
+-                    text = number,
+-                    modifier = Modifier.padding(
+-                        horizontal = 13.dp,
+-                        vertical = 10.dp
+-                    ),
+-                    fontWeight = FontWeight.Bold
+-                )
+-            }
+-
+-            Spacer(Modifier.width(13.dp))
+-
+-            Column(
+-                modifier = Modifier.weight(1f)
+-            ) {
+-                Text(
+-                    text = title,
+-                    fontWeight = FontWeight.Bold
+-                )
+-
+-                Spacer(Modifier.height(3.dp))
+-
+-                Text(
+-                    text = description,
+-                    style = MaterialTheme.typography.bodySmall,
+-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+-                )
+-            }
+-        }
+-    }
+-}
+-
+-
+-@Composable
+-private fun RoomAIHomeAction(
+-    modifier: Modifier = Modifier,
+-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+-    title: String,
+-    description: String,
+-    onClick: () -> Unit
+-) {
+-    Card(
+-        modifier = modifier
+-            .height(128.dp)
+-            .clickable { onClick() },
+-        shape = RoundedCornerShape(22.dp)
+-    ) {
+-        Column(
+-            modifier = Modifier.padding(16.dp)
+-        ) {
+-            Surface(
+-                shape = RoundedCornerShape(12.dp),
+-                color = MaterialTheme.colorScheme.secondaryContainer
+-            ) {
+-                Icon(
+-                    imageVector = icon,
+-                    contentDescription = null,
+-                    modifier = Modifier.padding(9.dp)
+-                )
+-            }
+-
+-            Spacer(Modifier.height(10.dp))
+-
+-            Text(
+-                text = title,
+-                style = MaterialTheme.typography.titleMedium
+-            )
+-
+-            Text(
+-                text = description,
+-                style = MaterialTheme.typography.bodySmall,
+-                color = MaterialTheme.colorScheme.onSurfaceVariant
+-            )
+-        }
+-    }
+-}
+-
+-@Composable
+-fun HomeActionCard(
+-    title: String,
+-    description: String,
+-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+-    onClick: () -> Unit
+-) {
+-    Card(
+-        modifier = Modifier
+-            .fillMaxWidth()
+-            .clickable { onClick() },
+-        shape = RoundedCornerShape(22.dp)
+-    ) {
+-        Row(
+-            modifier = Modifier.padding(18.dp),
+-            verticalAlignment = Alignment.CenterVertically
+-        ) {
+-            Icon(
+-                imageVector = icon,
+-                contentDescription = null,
+-                modifier = Modifier.size(30.dp)
+-            )
+-
+-            Spacer(Modifier.width(16.dp))
+-
+-            Column(
+-                modifier = Modifier.weight(1f)
+-            ) {
+-                Text(
+-                    title,
+-                    style = MaterialTheme.typography.titleMedium
+-                )
+-
+-                Spacer(Modifier.height(5.dp))
+-
+-                Text(
+-                    description,
+-                    style = MaterialTheme.typography.bodyMedium,
+-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+-                )
+-            }
+-        }
+-    }
+-}
+-
+ @Composable
+ fun AuthScreen(
+     dark: Boolean,
+@@ -1267,165 +1080,6 @@ private fun RowScope.BottomItem(
+ }
+ 
+ 
+-@Composable
+-fun FeatureGrid(nav: NavHostController) {
+-    Column(
+-        verticalArrangement = Arrangement.spacedBy(12.dp)
+-    ) {
+-        Row(
+-            modifier = Modifier.fillMaxWidth(),
+-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+-        ) {
+-            SmallFeature(
+-                "Solve my room",
+-                Icons.Default.Palette,
+-                Modifier.weight(1f)
+-            ) {
+-                nav.navigate("styles")
+-            }
+-
+-            SmallFeature(
+-                "Fix a room problem",
+-                Icons.Default.AutoFixHigh,
+-                Modifier.weight(1f)
+-            ) {
+-                nav.navigate("enhance")
+-            }
+-        }
+-
+-        Row(
+-            modifier = Modifier.fillMaxWidth(),
+-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+-        ) {
+-            SmallFeature(
+-                "Furniture",
+-                Icons.Default.Chair,
+-                Modifier.weight(1f)
+-            ) {
+-                nav.navigate("furniture")
+-            }
+-
+-            SmallFeature(
+-                "Products",
+-                Icons.Default.ShoppingBag,
+-                Modifier.weight(1f)
+-            ) {
+-                nav.navigate("products")
+-            }
+-        }
+-
+-        Spacer(Modifier.height(2.dp))
+-
+-        Row(
+-            modifier = Modifier.fillMaxWidth(),
+-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+-        ) {
+-            SmallFeature(
+-                "AI Studio",
+-                Icons.Default.AutoAwesome,
+-                Modifier.weight(1f)
+-            ) {
+-                nav.navigate("ai_studio")
+-            }
+-
+-            SmallFeature(
+-                "Diagnose",
+-                Icons.Default.Search,
+-                Modifier.weight(1f)
+-            ) {
+-                nav.navigate("diagnose")
+-            }
+-        }
+-
+-        Row(
+-            modifier = Modifier.fillMaxWidth(),
+-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+-        ) {
+-            SmallFeature(
+-                "Decision Engine",
+-                Icons.Default.Psychology,
+-                Modifier.weight(1f)
+-            ) {
+-                nav.navigate("decision_engine")
+-            }
+-
+-            SmallFeature(
+-                "Room Memory",
+-                Icons.Default.Lock,
+-                Modifier.weight(1f)
+-            ) {
+-                nav.navigate("room_memory")
+-            }
+-        }
+-    }
+-}
+-
+-@Composable
+-fun SmallFeature(
+-    title: String,
+-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+-    modifier: Modifier,
+-    onClick: () -> Unit
+-) {
+-    ElevatedCard(
+-        onClick = onClick,
+-        modifier = modifier.height(115.dp),
+-        shape = RoundedCornerShape(20.dp)
+-    ) {
+-        Column(
+-            modifier = Modifier.padding(16.dp)
+-        ) {
+-            Icon(icon, title)
+-
+-            Spacer(Modifier.height(10.dp))
+-
+-            Text(
+-                title,
+-                fontWeight = FontWeight.SemiBold
+-            )
+-        }
+-    }
+-}
+-
+-@Composable
+-fun StepCard(
+-    number: String,
+-    title: String,
+-    description: String
+-) {
+-    Card(
+-        modifier = Modifier
+-            .fillMaxWidth()
+-            .padding(vertical = 4.dp)
+-    ) {
+-        Row(
+-            modifier = Modifier.padding(16.dp),
+-            verticalAlignment = Alignment.CenterVertically
+-        ) {
+-            Surface(
+-                shape = RoundedCornerShape(50),
+-                tonalElevation = 4.dp
+-            ) {
+-                Text(
+-                    number,
+-                    modifier = Modifier.padding(
+-                        horizontal = 13.dp,
+-                        vertical = 8.dp
+-                    ),
+-                    fontWeight = FontWeight.Bold
+-                )
+-            }
+-
+-            Spacer(Modifier.width(14.dp))
+-
+-            Column {
+-                Text(title, fontWeight = FontWeight.Bold)
+-                Text(description)
+-            }
+-        }
+-    }
+-}
+-
+ @Composable
+ fun Create() {
+     val context = LocalContext.current
+diff --git a/app/src/main/java/com/roomai/app/RoomAIProblemHome.kt b/app/src/main/java/com/roomai/app/RoomAIProblemHome.kt
+deleted file mode 100644
+index c82b614..0000000
+--- a/app/src/main/java/com/roomai/app/RoomAIProblemHome.kt
++++ /dev/null
+@@ -1,207 +0,0 @@
+-package com.roomai.app
+-
+-import androidx.compose.foundation.layout.Arrangement
+-import androidx.compose.foundation.layout.Column
+-import androidx.compose.foundation.layout.Row
+-import androidx.compose.foundation.layout.Spacer
+-import androidx.compose.foundation.layout.fillMaxSize
+-import androidx.compose.foundation.layout.fillMaxWidth
+-import androidx.compose.foundation.layout.height
+-import androidx.compose.foundation.layout.padding
+-import androidx.compose.foundation.layout.size
+-import androidx.compose.foundation.lazy.LazyColumn
+-import androidx.compose.foundation.lazy.items
+-import androidx.compose.foundation.shape.RoundedCornerShape
+-import androidx.compose.material.icons.Icons
+-import androidx.compose.material.icons.filled.ArrowForward
+-import androidx.compose.material.icons.filled.AutoAwesome
+-import androidx.compose.material.icons.filled.AttachMoney
+-import androidx.compose.material.icons.filled.Checkroom
+-import androidx.compose.material.icons.filled.Home
+-import androidx.compose.material.icons.filled.PhotoCamera
+-import androidx.compose.material.icons.filled.SpaceDashboard
+-import androidx.compose.material3.Button
+-import androidx.compose.material3.Card
+-import androidx.compose.material3.HorizontalDivider
+-import androidx.compose.material3.Icon
+-import androidx.compose.material3.MaterialTheme
+-import androidx.compose.material3.OutlinedCard
+-import androidx.compose.material3.Text
+-import androidx.compose.runtime.Composable
+-import androidx.compose.ui.Alignment
+-import androidx.compose.ui.Modifier
+-import androidx.compose.ui.graphics.vector.ImageVector
+-import androidx.compose.ui.text.font.FontWeight
+-import androidx.compose.ui.unit.dp
+-
+-data class RoomAIProblemOption(
+-    val title: String,
+-    val description: String,
+-    val icon: ImageVector
+-)
+-
+-@Composable
+-fun RoomAIProblemHome(
+-    onProblemSelected: (RoomAIProblemOption) -> Unit = {}
+-) {
+-    val problems = listOf(
+-        RoomAIProblemOption(
+-            title = "Make my room better",
+-            description = "Find the changes that will have the biggest impact.",
+-            icon = Icons.Default.Home
+-        ),
+-        RoomAIProblemOption(
+-            title = "Fit my budget",
+-            description = "Create a practical room plan within my budget.",
+-            icon = Icons.Default.AttachMoney
+-        ),
+-        RoomAIProblemOption(
+-            title = "Use my existing furniture",
+-            description = "Keep what works and replace only what needs changing.",
+-            icon = Icons.Default.Checkroom
+-        ),
+-        RoomAIProblemOption(
+-            title = "Use my space better",
+-            description = "Solve layout and space problems before buying anything.",
+-            icon = Icons.Default.SpaceDashboard
+-        ),
+-        RoomAIProblemOption(
+-            title = "I don't know what to buy",
+-            description = "Turn my room into a clear improvement and shopping plan.",
+-            icon = Icons.Default.AutoAwesome
+-        )
+-    )
+-
+-    LazyColumn(
+-        modifier = Modifier
+-            .fillMaxSize()
+-            .padding(horizontal = 20.dp, vertical = 18.dp),
+-        verticalArrangement = Arrangement.spacedBy(14.dp)
+-    ) {
+-
+-        item {
+-            Text(
+-                text = "Solve your room.",
+-                style = MaterialTheme.typography.headlineLarge,
+-                fontWeight = FontWeight.Bold
+-            )
+-
+-            Spacer(Modifier.height(6.dp))
+-
+-            Text(
+-                text = "RoomAI helps you decide what to change, " +
+-                    "what to keep and what to buy before you spend money.",
+-                style = MaterialTheme.typography.bodyLarge
+-            )
+-        }
+-
+-        item {
+-            Card(
+-                modifier = Modifier.fillMaxWidth(),
+-                shape = RoundedCornerShape(22.dp)
+-            ) {
+-                Column(
+-                    modifier = Modifier.padding(20.dp)
+-                ) {
+-                    Icon(
+-                        imageVector = Icons.Default.PhotoCamera,
+-                        contentDescription = null,
+-                        modifier = Modifier.size(34.dp)
+-                    )
+-
+-                    Spacer(Modifier.height(10.dp))
+-
+-                    Text(
+-                        text = "Start with your room",
+-                        style = MaterialTheme.typography.titleLarge,
+-                        fontWeight = FontWeight.Bold
+-                    )
+-
+-                    Spacer(Modifier.height(5.dp))
+-
+-                    Text(
+-                        text = "Upload a room photo and tell RoomAI what you want to solve."
+-                    )
+-
+-                    Spacer(Modifier.height(14.dp))
+-
+-                    Button(
+-                        onClick = {
+-                            onProblemSelected(problems.first())
+-                        },
+-                        modifier = Modifier.fillMaxWidth()
+-                    ) {
+-                        Text("Start")
+-                    }
+-                }
+-            }
+-        }
+-
+-        item {
+-            Text(
+-                text = "What problem do you want to solve?",
+-                style = MaterialTheme.typography.titleLarge,
+-                fontWeight = FontWeight.Bold
+-            )
+-        }
+-
+-        items(problems) { problem ->
+-
+-            OutlinedCard(
+-                onClick = {
+-                    onProblemSelected(problem)
+-                },
+-                modifier = Modifier.fillMaxWidth(),
+-                shape = RoundedCornerShape(18.dp)
+-            ) {
+-                Row(
+-                    modifier = Modifier
+-                        .fillMaxWidth()
+-                        .padding(17.dp),
+-                    verticalAlignment = Alignment.CenterVertically
+-                ) {
+-
+-                    Icon(
+-                        imageVector = problem.icon,
+-                        contentDescription = null,
+-                        modifier = Modifier.size(28.dp)
+-                    )
+-
+-                    Spacer(Modifier.size(14.dp))
+-
+-                    Column(
+-                        modifier = Modifier.weight(1f)
+-                    ) {
+-                        Text(
+-                            text = problem.title,
+-                            fontWeight = FontWeight.Bold
+-                        )
+-
+-                        Spacer(Modifier.height(3.dp))
+-
+-                        Text(
+-                            text = problem.description,
+-                            style = MaterialTheme.typography.bodyMedium
+-                        )
+-                    }
+-
+-                    Icon(
+-                        imageVector = Icons.Default.ArrowForward,
+-                        contentDescription = null
+-                    )
+-                }
+-            }
+-        }
+-
+-        item {
+-            HorizontalDivider()
+-
+-            Spacer(Modifier.height(6.dp))
+-
+-            Text(
+-                text = "Generate is only one step. RoomAI's goal is to solve the room problem.",
+-                style = MaterialTheme.typography.bodyMedium
+-            )
+-        }
+-    }
+-}
+diff --git a/app/src/main/java/com/roomai/app/RoomAISolveHome.kt b/app/src/main/java/com/roomai/app/RoomAISolveHome.kt
+deleted file mode 100644
+index 0c8c288..0000000
+--- a/app/src/main/java/com/roomai/app/RoomAISolveHome.kt
++++ /dev/null
+@@ -1,206 +0,0 @@
+-package com.roomai.app
+-
+-import androidx.compose.foundation.layout.*
+-import androidx.compose.foundation.lazy.LazyColumn
+-import androidx.compose.foundation.shape.RoundedCornerShape
+-import androidx.compose.material.icons.Icons
+-import androidx.compose.material.icons.filled.AddAPhoto
+-import androidx.compose.material.icons.filled.ArrowForward
+-import androidx.compose.material.icons.filled.AutoAwesome
+-import androidx.compose.material.icons.filled.AttachMoney
+-import androidx.compose.material.icons.filled.Checkroom
+-import androidx.compose.material.icons.filled.Home
+-import androidx.compose.material.icons.filled.SpaceDashboard
+-import androidx.compose.material3.*
+-import androidx.compose.runtime.*
+-import androidx.compose.ui.Alignment
+-import androidx.compose.ui.Modifier
+-import androidx.compose.ui.text.font.FontWeight
+-import androidx.compose.ui.unit.dp
+-
+-data class RoomAISolveIntent(
+-    val title: String,
+-    val description: String,
+-    val icon: androidx.compose.ui.graphics.vector.ImageVector
+-)
+-
+-@Composable
+-fun RoomAISolveHome(
+-    onStart: (RoomAISolveIntent) -> Unit = {}
+-) {
+-    val intents = listOf(
+-        RoomAISolveIntent(
+-            "Make my room better",
+-            "Find the most important improvements first.",
+-            Icons.Default.Home
+-        ),
+-        RoomAISolveIntent(
+-            "Fit my budget",
+-            "Build a practical plan around what I can spend.",
+-            Icons.Default.AttachMoney
+-        ),
+-        RoomAISolveIntent(
+-            "Use my existing furniture",
+-            "Keep what works and change only what needs changing.",
+-            Icons.Default.Checkroom
+-        ),
+-        RoomAISolveIntent(
+-            "Use my space better",
+-            "Solve layout and space problems before buying anything.",
+-            Icons.Default.SpaceDashboard
+-        ),
+-        RoomAISolveIntent(
+-            "I don't know what to buy",
+-            "Turn the room into a practical improvement plan.",
+-            Icons.Default.AutoAwesome
+-        )
+-    )
+-
+-    LazyColumn(
+-        modifier = Modifier
+-            .fillMaxSize()
+-            .padding(20.dp),
+-        verticalArrangement = Arrangement.spacedBy(14.dp)
+-    ) {
+-
+-        item {
+-            Text(
+-                text = "Solve your room.",
+-                style = MaterialTheme.typography.headlineLarge,
+-                fontWeight = FontWeight.Bold
+-            )
+-
+-            Spacer(Modifier.height(6.dp))
+-
+-            Text(
+-                "Tell RoomAI what you want to solve. " +
+-                    "We'll help you decide what to change before you spend money."
+-            )
+-        }
+-
+-        item {
+-            Card(
+-                modifier = Modifier.fillMaxWidth(),
+-                shape = RoundedCornerShape(22.dp)
+-            ) {
+-                Column(
+-                    modifier = Modifier.padding(20.dp)
+-                ) {
+-                    Icon(
+-                        Icons.Default.AddAPhoto,
+-                        contentDescription = null,
+-                        modifier = Modifier.size(38.dp)
+-                    )
+-
+-                    Spacer(Modifier.height(10.dp))
+-
+-                    Text(
+-                        "Start with your room",
+-                        style = MaterialTheme.typography.titleLarge,
+-                        fontWeight = FontWeight.Bold
+-                    )
+-
+-                    Spacer(Modifier.height(4.dp))
+-
+-                    Text(
+-                        "Upload your room and tell us the problem."
+-                    )
+-
+-                    Spacer(Modifier.height(14.dp))
+-
+-                    Button(
+-                        onClick = {
+-                            onStart(intents.first())
+-                        },
+-                        modifier = Modifier.fillMaxWidth()
+-                    ) {
+-                        Text("Choose room photo")
+-                    }
+-                }
+-            }
+-        }
+-
+-        item {
+-            Text(
+-                "What do you want to solve?",
+-                style = MaterialTheme.typography.titleLarge,
+-                fontWeight = FontWeight.Bold
+-            )
+-        }
+-
+-        items(intents.size) { index ->
+-
+-            val intent = intents[index]
+-
+-            OutlinedCard(
+-                onClick = {
+-                    onStart(intent)
+-                },
+-                modifier = Modifier.fillMaxWidth(),
+-                shape = RoundedCornerShape(18.dp)
+-            ) {
+-
+-                Row(
+-                    modifier = Modifier
+-                        .fillMaxWidth()
+-                        .padding(17.dp),
+-                    verticalAlignment = Alignment.CenterVertically
+-                ) {
+-
+-                    Icon(
+-                        intent.icon,
+-                        contentDescription = null,
+-                        modifier = Modifier.size(28.dp)
+-                    )
+-
+-                    Spacer(Modifier.width(14.dp))
+-
+-                    Column(
+-                        modifier = Modifier.weight(1f)
+-                    ) {
+-
+-                        Text(
+-                            intent.title,
+-                            fontWeight = FontWeight.Bold
+-                        )
+-
+-                        Spacer(Modifier.height(3.dp))
+-
+-                        Text(intent.description)
+-                    }
+-
+-                    Icon(
+-                        Icons.Default.ArrowForward,
+-                        contentDescription = null
+-                    )
+-                }
+-            }
+-        }
+-
+-        item {
+-            HorizontalDivider()
+-
+-            Spacer(Modifier.height(6.dp))
+-
+-            Text(
+-                "RoomAI is designed to solve the room problem, " +
+-                    "not just generate another image."
+-            )
+-        }
+-    }
+-}
+-
+-/*
+- * Product flow:
+- *
+- * Problem
+- *   -> Diagnose
+- *   -> Plan
+- *   -> Generate
+- *   -> Precision Edit
+- *   -> Verify
+- *   -> Remember
+- *
+- * Existing Decision Engine, Precision Engine,
+- * Memory and History remain intact.
+- */
+diff --git a/gradle.properties b/gradle.properties
+index e101d49..7c157f1 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -2,6 +2,13 @@ android.enableJetifier=true
+ android.nonTransitiveRClass=true
+ android.useAndroidX=true
+ org.gradle.caching=true
+-org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
+ org.gradle.parallel=true
+ org.gradle.workers.max=2
++
++# Termux/mobile-safe Gradle configuration.
++# GitHub Actions performs the production build.
++org.gradle.jvmargs=-Xmx768m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8
++org.gradle.daemon=false
++org.gradle.parallel=false
++org.gradle.workers.max=1
++android.useAndroidX=true

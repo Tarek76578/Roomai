@@ -37,19 +37,18 @@ android {
         }
 
         release {
-            def releaseAdMobAppId =
-                project.findProperty("ROOMAI_ADMOB_APP_ID")
-            def releaseInterstitialAdId =
-                project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")
+            if (!project.hasProperty("ROOMAI_ADMOB_APP_ID") ||
+                !project.hasProperty("ROOMAI_INTERSTITIAL_AD_ID")) {
+                throw new GradleException(
+                    "RoomAI release requires real AdMob IDs."
+                )
+            }
 
             buildConfigField(
                 "String",
                 "ROOMAI_INTERSTITIAL_AD_ID",
-                "\"${releaseInterstitialAdId ?: "ca-app-pub-3940256099942544/1033173712"}\""
+                "\"${project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")}\""
             )
-
-            manifestPlaceholders.roomAiAdmobAppId =
-                releaseAdMobAppId ?: "ca-app-pub-3940256099942544~3347511713"
         }
     }
 
@@ -60,45 +59,6 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
-    }
-
-}
-
-// Production-only AdMob validation.
-// Configuration/evaluation must remain safe for debug and unit tests.
-// The guard executes only when an actual release APK/AAB/package task runs.
-afterEvaluate {
-    tasks.configureEach { task ->
-        def taskName = task.name.toLowerCase()
-
-        if (taskName.contains("release") &&
-            (taskName.contains("assemble") ||
-             taskName.contains("bundle") ||
-             taskName.contains("package"))) {
-
-            task.doFirst {
-                def appId = project.findProperty("ROOMAI_ADMOB_APP_ID")
-                def interstitialId =
-                    project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")
-
-                def testAppId =
-                    "ca-app-pub-3940256099942544~3347511713"
-                def testInterstitialId =
-                    "ca-app-pub-3940256099942544/1033173712"
-
-                if (!appId ||
-                    !interstitialId ||
-                    appId == testAppId ||
-                    interstitialId == testInterstitialId) {
-
-                    throw new GradleException(
-                        "RoomAI production release requires real AdMob IDs. " +
-                        "Provide ROOMAI_ADMOB_APP_ID and " +
-                        "ROOMAI_INTERSTITIAL_AD_ID."
-                    )
-                }
-            }
-        }
     }
 }
 
