@@ -719,67 +719,36 @@ fun RoomAIHomeRedesigned(
     loggedIn: Boolean = false,
     usage: RoomAIUsage = RoomAIUsage()
 ) {
-    val context = LocalContext.current
-
-    fun openProblem(problem: String) {
-        RoomAIProblemFlow.select(problem)
-
-        nav.navigate("problem_first") {
-            launchSingleTop = true
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 16.dp)
+            .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
 
-        // =========================================================
+        // =====================================================
         // HEADER
-        // =========================================================
+        // =====================================================
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "RoomAI",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+        Text(
+            text = "RoomAI",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
 
-                Text(
-                    text = "Solve the room. Then improve it.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        Spacer(Modifier.height(6.dp))
 
-            IconButton(
-                onClick = {
-                    nav.navigate("menu") {
-                        launchSingleTop = true
-                    }
-                }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu"
-                )
-            }
-        }
+        Text(
+            text = "Solve the problem before you spend money.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
 
-        // =========================================================
-        // PRIMARY PROBLEM ENTRY
-        // =========================================================
+        // =====================================================
+        // ONE PRIMARY USER ACTION
+        // =====================================================
 
         Card(
             modifier = Modifier
@@ -789,52 +758,39 @@ fun RoomAIHomeRedesigned(
                         launchSingleTop = true
                     }
                 },
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             )
         ) {
             Column(
-                modifier = Modifier.padding(22.dp)
+                modifier = Modifier.padding(24.dp)
             ) {
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.padding(14.dp)
-                        )
-                    }
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
 
-                    Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.height(16.dp))
 
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "What is wrong with your room?",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                Text(
+                    text = "Analyze my room",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
 
-                        Spacer(Modifier.height(5.dp))
+                Spacer(Modifier.height(8.dp))
 
-                        Text(
-                            text = "RoomAI analyzes the evidence, identifies the most important problems and builds a practical solution.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
+                Text(
+                    text = "Take a photo and tell RoomAI what you want to improve. We will diagnose the room and guide you to the next step.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(20.dp))
 
                 Button(
                     onClick = {
@@ -846,160 +802,53 @@ fun RoomAIHomeRedesigned(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AutoAwesome,
+                        imageVector = Icons.Default.PhotoCamera,
                         contentDescription = null
                     )
 
                     Spacer(Modifier.width(8.dp))
 
-                    Text("Analyze my room")
+                    Text("Start")
                 }
             }
         }
 
         Spacer(Modifier.height(28.dp))
 
-        // =========================================================
-        // COMMON PROBLEMS
-        // =========================================================
+        // =====================================================
+        // SIMPLE EXPLANATION — NO EXTRA ACTIONS
+        // =====================================================
 
         Text(
-            text = "What do you want to improve?",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(Modifier.height(6.dp))
-
-        Text(
-            text = "Choose the problem that matters most. RoomAI will use it to prioritize the diagnosis.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(Modifier.height(14.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            RoomAIProblemQuickCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.Dashboard,
-                title = "Too crowded",
-                description = "Use space better"
-            ) {
-                openProblem(RoomAIProblemFlow.SPACE)
-            }
-
-            RoomAIProblemQuickCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.LightMode,
-                title = "Bad lighting",
-                description = "Improve light"
-            ) {
-                openProblem(RoomAIProblemFlow.LIGHTING)
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            RoomAIProblemQuickCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.Checkroom,
-                title = "Furniture",
-                description = "Keep what works"
-            ) {
-                openProblem(RoomAIProblemFlow.EXISTING_FURNITURE)
-            }
-
-            RoomAIProblemQuickCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.AttachMoney,
-                title = "Low budget",
-                description = "Spend less"
-            ) {
-                openProblem(RoomAIProblemFlow.BUDGET)
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            RoomAIProblemQuickCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.ShoppingBag,
-                title = "Don't know what to buy",
-                description = "Build a shopping plan"
-            ) {
-                openProblem(RoomAIProblemFlow.SHOPPING)
-            }
-
-            RoomAIProblemQuickCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.AutoAwesome,
-                title = "Something else",
-                description = "Describe my problem"
-            ) {
-                openProblem(RoomAIProblemFlow.SPECIFIC_CHANGE)
-            }
-        }
-
-        Spacer(Modifier.height(28.dp))
-
-        // =========================================================
-        // HOW ROOMAI SOLVES THE PROBLEM
-        // =========================================================
-
-        Text(
-            text = "How RoomAI works",
+            text = "What happens next?",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
 
         Spacer(Modifier.height(12.dp))
 
-        RoomAIStepCard(
-            number = "1",
-            title = "Understand",
-            description = "You tell RoomAI what you want to fix and provide the room evidence."
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        RoomAIStepCard(
-            number = "2",
-            title = "Diagnose",
-            description = "AI separates visible evidence from assumptions and ranks the real problems."
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        RoomAIStepCard(
-            number = "3",
-            title = "Solve",
-            description = "You get prioritized actions, constraints, trade-offs and practical next steps."
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        RoomAIStepCard(
-            number = "4",
-            title = "Visualize",
-            description = "Only after the solution is clear do we generate a visual concept."
+        Text(
+            text = "1. Add a photo\n2. Tell us what matters most\n3. Get a diagnosis\n4. Decide what to do",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 26.sp
         )
 
         Spacer(Modifier.height(28.dp))
 
-        // =========================================================
-        // SECONDARY TOOLS
-        // =========================================================
+        // =====================================================
+        // NO DUPLICATE HOME BUTTONS
+        //
+        // Create / Designs / Menu already exist in the
+        // application's bottom navigation.
+        // =====================================================
+
+        Text(
+            text = "Your other areas are available from the navigation bar.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.height(16.dp))
     }
 }
