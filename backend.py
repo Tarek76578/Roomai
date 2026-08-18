@@ -12,6 +12,7 @@ import hmac
 import re
 from flask import Flask, jsonify, request
 from diagnostic_engine import build_diagnostic_prompt, normalize_diagnosis
+from werkzeug.exceptions import HTTPException
 
 
 app = Flask(__name__)
@@ -22,6 +23,32 @@ app = Flask(__name__)
 # Never allow Flask/Render to expose an HTML error page to the
 # Android client. RoomAI's mobile protocol is JSON.
 # ============================================================
+
+@app.errorhandler(HTTPException)
+def roomai_http_exception(error):
+    """
+    Flask/HTTP errors must always use RoomAI's JSON API contract.
+    This prevents Render/Flask 404/405/413/etc. pages from reaching
+    the Android application as HTML.
+    """
+    status_code = getattr(error, "code", 500) or 500
+
+    description = getattr(
+        error,
+        "description",
+        "RoomAI HTTP error"
+    )
+
+    return jsonify({
+        "status": "error",
+        "code": (
+            "METHOD_NOT_ALLOWED"
+            if status_code == 405
+            else "HTTP_ERROR"
+        ),
+        "error": str(description)
+    }), status_code
+
 
 def roomai_error_payload(error, code="SERVER_ERROR"):
     message = str(error).strip()
