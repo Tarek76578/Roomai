@@ -3545,7 +3545,7 @@ fun Diagnose() {
         item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
+                shape = MaterialTheme.shapes.large
             ) {
                 Row(
                     modifier = Modifier.padding(18.dp),
@@ -3673,7 +3673,7 @@ fun Diagnose() {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 if (loading) {
                     CircularProgressIndicator(
@@ -3699,7 +3699,7 @@ fun Diagnose() {
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
@@ -3899,7 +3899,7 @@ fun Diagnose() {
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = MaterialTheme.shapes.medium
                             ) {
                                 if (fixingProblem == problem.title) {
                                     CircularProgressIndicator(
@@ -3916,7 +3916,7 @@ fun Diagnose() {
                                     )
 
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Fix Highest Priority Problem")
+                                    Text("Fix this priority problem")
                                 }
                             }
                         }
@@ -3936,7 +3936,7 @@ fun Diagnose() {
                 items(orderedProblems) { problem ->
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Column(
                             modifier = Modifier.padding(18.dp)
@@ -4025,7 +4025,7 @@ fun Diagnose() {
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = MaterialTheme.shapes.medium
                             ) {
                                 if (fixingProblem == problem.title) {
                                     CircularProgressIndicator(
@@ -4042,7 +4042,7 @@ fun Diagnose() {
                                     )
 
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Fix This Problem")
+                                    Text("Fix this problem")
                                 }
                             }
 
@@ -4073,7 +4073,7 @@ fun Diagnose() {
                 item {
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Column(
                             modifier = Modifier.padding(18.dp)
@@ -4095,7 +4095,9 @@ fun Diagnose() {
                             Spacer(Modifier.height(6.dp))
 
                             Text(
-                                "Your room already has a strong foundation. RoomAI can still suggest style and upgrade ideas."
+                                "Your room already has a strong foundation. RoomAI can still suggest style and upgrade ideas.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -4114,7 +4116,7 @@ fun Diagnose() {
                 items(result.risks) { risk ->
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Column(
                             modifier = Modifier.padding(18.dp)
@@ -4152,7 +4154,9 @@ fun Diagnose() {
                             Text(
                                 risk.message.ifBlank {
                                     "RoomAI detected something that should be reviewed."
-                                }
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -4218,7 +4222,7 @@ fun Diagnose() {
                         fixedProblemTitle = null
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Icon(
                         Icons.Default.Refresh,
