@@ -15,6 +15,15 @@ from diagnostic_engine import build_diagnostic_prompt, normalize_diagnosis
 
 app = Flask(__name__)
 
+@app.after_request
+def roomai_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 # Production safety: reject oversized uploads before they consume
 # Gemini/MagicHour resources.
 app.config["MAX_CONTENT_LENGTH"] = int(
@@ -51,12 +60,15 @@ ROOMAI_PRO_MONTHLY_LIMIT = int(
     os.environ.get("ROOMAI_PRO_MONTHLY_LIMIT", "100")
 )
 
+_roomai_data_dir = (
+    "/var/data"
+    if os.path.isdir("/var/data")
+    else os.path.dirname(os.path.abspath(__file__))
+)
+
 ROOMAI_DB = os.environ.get(
     "ROOMAI_USAGE_DB",
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "roomai_usage.db"
-    )
+    os.path.join(_roomai_data_dir, "roomai_usage.db")
 )
 
 # Pro entitlements are server-controlled.

@@ -33,3 +33,8 @@ room_result.png
 roomai-source.txt
 roomai.py
 roomai_usage.db
+.roomai-local-backups/
+.env
+.env.*
+*.jks
+*.keystore
