@@ -1233,7 +1233,6 @@ fun Create() {
                 value = goal,
                 onValueChange = {
                     goal = it
-                    diagnosis = null
                     error = null
                 },
                 modifier = Modifier.fillMaxWidth(),
