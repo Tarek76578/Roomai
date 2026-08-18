@@ -845,7 +845,9 @@ def run_editor(image_path, ext, prompt):
         "image_count": 1,
         "model": "qwen-edit",
         "aspect_ratio": "auto",
-        "resolution": "1k",
+        # Let Magic Hour select the highest resolution available
+        # for the API key's subscription/model tier.
+        "resolution": "auto",
         "style": {
             "prompt": prompt
         },
