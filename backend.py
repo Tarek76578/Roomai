@@ -629,13 +629,21 @@ def usage_response():
 
 
 
-def api_request(url, method="GET", data=None, headers=None):
+def api_request(
+    url,
+    method="GET",
+    data=None,
+    headers=None,
+    allow_empty=False
+):
     """
     Strict external HTTP client.
 
-    Magic Hour responses are accepted as bytes, but all HTTP errors
-    are converted into useful RuntimeError messages. HTML bodies are
-    explicitly detected so they can never masquerade as JSON.
+    Empty responses are rejected by default because RoomAI API
+    responses must contain data. The only callers that should allow
+    an empty response are operations where the external service
+    intentionally returns HTTP success with no body, such as a
+    signed image-upload PUT.
     """
 
     req = urllib.request.Request(
@@ -653,7 +661,7 @@ def api_request(url, method="GET", data=None, headers=None):
                 or ""
             ).lower()
 
-            if not body:
+            if not body and not allow_empty:
                 raise RuntimeError(
                     "Empty response from external image service"
                 )
@@ -770,7 +778,8 @@ def run_editor(image_path, ext, prompt):
         item["upload_url"],
         "PUT",
         image_data,
-        {"Content-Type": content_type}
+        {"Content-Type": content_type},
+        allow_empty=True
     )
 
     payload = {
