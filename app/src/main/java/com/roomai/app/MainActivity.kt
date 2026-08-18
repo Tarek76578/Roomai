@@ -702,6 +702,9 @@ fun RoomAIApp(
 
             composable("menu") {
                 Menu(
+                    nav = nav,
+                    usage = usage,
+                    usageLoading = usageLoading,
                     loggedIn = token.isNotBlank(),
                     dark = dark,
                     setDark = setDark,
@@ -4940,155 +4943,515 @@ fun Products() {
 
 @Composable
 fun Menu(
+    nav: NavHostController,
+    usage: RoomAIUsage,
+    usageLoading: Boolean,
     dark: Boolean,
     setDark: (Boolean) -> Unit,
     loggedIn: Boolean,
     onLogin: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    val savedEmail =
+        context.getSharedPreferences(
+            ROOMAI_PLAN_PREFS,
+            Context.MODE_PRIVATE
+        ).getString(
+            "account_email",
+            ""
+        ).orEmpty()
+
+    fun go(route: String) {
+        nav.navigate(route) {
+            launchSingleTop = true
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+
         item {
             Text(
-                "Settings",
+                "RoomAI Control Center",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                "Manage your account, usage, workspace and advanced RoomAI tools from one place.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
+        // =====================================================
+        // ACCOUNT + USAGE
+        // =====================================================
 
         item {
-            val context = LocalContext.current
-            val savedEmail =
-                context.getSharedPreferences(
-                    ROOMAI_PLAN_PREFS,
-                    Context.MODE_PRIVATE
-                ).getString(
-                    "account_email",
-                    ""
-                ).orEmpty()
-
-            Card(
+            ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(22.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(18.dp)
                 ) {
+                    Text(
+                        "Account & plan",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        if (savedEmail.isBlank())
+                            "Guest account"
+                        else
+                            savedEmail,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Text(
+                        if (loggedIn)
+                            "Your account is connected."
+                        else
+                            "Guest mode • login to keep your account and designs connected.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.padding(12.dp)
-                            )
-                        }
+                        AssistChip(
+                            onClick = {},
+                            label = {
+                                Text(
+                                    if (usageLoading)
+                                        "Loading plan..."
+                                    else
+                                        usage.plan.uppercase()
+                                )
+                            }
+                        )
 
-                        Spacer(Modifier.width(12.dp))
-
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                "Account",
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Text(
-                                if (savedEmail.isBlank())
-                                    "Guest • Login to save your designs"
-                                else
-                                    savedEmail,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        AssistChip(
+                            onClick = {},
+                            label = {
+                                Text(
+                                    if (usageLoading)
+                                        "Usage loading..."
+                                    else
+                                        "${usage.remaining} generations left"
+                                )
+                            }
+                        )
                     }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        if (usageLoading)
+                            "Checking your current usage..."
+                        else
+                            "${usage.used} / ${usage.limit} generations used this month",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
 
                     Spacer(Modifier.height(14.dp))
 
                     OutlinedButton(
-                          modifier = Modifier.fillMaxWidth(),
-                          onClick = {
-                              if (loggedIn) {
-                                  onLogout()
-                              } else {
-                                  onLogin()
-                              }
-                          }
-                      ) {
-                          Icon(
-                              if (loggedIn)
-                                  Icons.Default.Logout
-                              else
-                                  Icons.Default.Login,
-                              contentDescription = null
-                          )
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            if (loggedIn) onLogout() else onLogin()
+                        }
+                    ) {
+                        Icon(
+                            if (loggedIn)
+                                Icons.Default.Logout
+                            else
+                                Icons.Default.Login,
+                            contentDescription = null
+                        )
 
-                          Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(8.dp))
 
-                          Text(
-                              if (loggedIn)
-                                  "Log out"
-                              else
-                                  "Log in"
-                          )
-                      }
+                        Text(
+                            if (loggedIn)
+                                "Log out"
+                            else
+                                "Log in"
+                        )
+                    }
+                }
+            }
+        }
+
+        // =====================================================
+        // MAIN WORKSPACE
+        // =====================================================
+
+        item {
+            Text(
+                "Workspace",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { go("create") }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Create")
+                }
+
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { go("designs") }
+                ) {
+                    Icon(
+                        Icons.Default.PhotoLibrary,
+                        contentDescription = null
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Designs")
                 }
             }
         }
 
         item {
-            ListItem(
-                headlineContent = {
-                    Text("Dark Mode")
-                },
-                leadingContent = {
-                    Icon(Icons.Default.DarkMode, null)
-                },
-                trailingContent = {
-                    Switch(
-                        checked = dark,
-                        onCheckedChange = setDark
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { go("diagnose") }
+                ) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null
                     )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Diagnose")
                 }
+
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { go("decision_engine") }
+                ) {
+                    Icon(
+                        Icons.Default.Tune,
+                        contentDescription = null
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Decide")
+                }
+            }
+        }
+
+        // =====================================================
+        // ADVANCED TOOLS
+        // =====================================================
+
+        item {
+            Text(
+                "Advanced tools",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
         }
 
         item {
-            ListItem(
-                headlineContent = {
-                    Text("AI Interior Designer")
-                },
-                supportingContent = {
-                    Text("RoomAI")
-                },
-                leadingContent = {
-                    Icon(Icons.Default.AutoAwesome, null)
-                }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { go("ai_studio") }
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "AI Studio",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "Work with directed redesigns, budget controls, products and advanced generation."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { go("precision") }
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "Precision",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "Control AI changes more precisely and verify generated results."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.Tune,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { go("room_memory") }
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "Room Memory",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "Keep room context available for more consistent recommendations."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.History,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { go("professional") }
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "Professional",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "Professional workspace for deeper interior decisions and workflows."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.Work,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { go("growth") }
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "Growth & next steps",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "Continue improving the room and discover the next useful action."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.TrendingUp,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // QUICK TOOLS
+        // =====================================================
+
+        item {
+            Text(
+                "Quick tools",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
         }
 
         item {
-            ListItem(
-                headlineContent = {
-                    Text("Design Library")
-                },
-                supportingContent = {
-                    Text("Generated designs are stored locally.")
-                },
-                leadingContent = {
-                    Icon(Icons.Default.PhotoLibrary, null)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { go("styles") }
+                ) {
+                    Text("Styles")
                 }
+
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { go("enhance") }
+                ) {
+                    Text("Enhance")
+                }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { go("furniture") }
+                ) {
+                    Text("Furniture")
+                }
+
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = { go("products") }
+                ) {
+                    Text("Products")
+                }
+            }
+        }
+
+        // =====================================================
+        // APPEARANCE
+        // =====================================================
+
+        item {
+            Text(
+                "Preferences",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text("Dark Mode")
+                    },
+                    supportingContent = {
+                        Text(
+                            if (dark)
+                                "Dark appearance is enabled."
+                            else
+                                "Use a darker interface."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.DarkMode,
+                            contentDescription = null
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = dark,
+                            onCheckedChange = setDark
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // ABOUT
+        // =====================================================
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "RoomAI",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "AI interior design focused on solving the room problem before spending money."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
