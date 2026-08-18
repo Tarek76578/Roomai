@@ -760,7 +760,57 @@ def diagnose_with_gemini(
             ["content"]["parts"][0]["text"]
         )
 
-        raw_diagnosis = json.loads(text)
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("Gemini diagnostic text is empty")
+
+        text = text.strip()
+
+        # Gemini may still return JSON wrapped in Markdown fences.
+        if text.startswith("```"):
+            lines = text.splitlines()
+
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+
+            text = "\n".join(lines).strip()
+
+        try:
+            raw_diagnosis = json.loads(text)
+
+        except json.JSONDecodeError:
+            # Defensive recovery: locate the first complete JSON object
+            # without blindly truncating the model response.
+            decoder = json.JSONDecoder()
+            raw_diagnosis = None
+
+            for index, char in enumerate(text):
+                if char != "{":
+                    continue
+
+                try:
+                    candidate, end = decoder.raw_decode(
+                        text[index:]
+                    )
+
+                    if isinstance(candidate, dict):
+                        raw_diagnosis = candidate
+                        break
+
+                except json.JSONDecodeError:
+                    continue
+
+            if raw_diagnosis is None:
+                raise ValueError(
+                    "Gemini response is not valid JSON"
+                )
+
+        if not isinstance(raw_diagnosis, dict):
+            raise ValueError(
+                "Gemini diagnostic must be a JSON object"
+            )
 
         diagnosis = normalize_diagnosis(
             raw_diagnosis
