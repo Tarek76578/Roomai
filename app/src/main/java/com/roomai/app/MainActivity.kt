@@ -22,6 +22,7 @@ import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Looper
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -72,69 +73,121 @@ private object RoomAIAds {
     private var interstitialAd: InterstitialAd? = null
     private var loading = false
 
+    /*
+     * Google Mobile Ads UI APIs must be called from the main thread.
+     * Generation/network work remains on Dispatchers.IO.
+     */
+
     fun initialize(context: Context) {
-        MobileAds.initialize(context)
-        load(context)
+        val activity = context as? android.app.Activity
+
+        if (activity == null) {
+            Log.w("RoomAIAds", "No Activity available for AdMob initialization")
+            return
+        }
+
+        activity.runOnUiThread {
+            MobileAds.initialize(activity) {
+                load(activity)
+            }
+        }
     }
 
     private fun load(context: Context) {
+        /*
+         * This function is intentionally Main-Thread only.
+         */
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            val activity = context as? android.app.Activity
+            if (activity != null) {
+                activity.runOnUiThread {
+                    load(activity)
+                }
+            }
+            return
+        }
+
         if (loading || interstitialAd != null) return
+
+        val activity = context as? android.app.Activity
+            ?: return
 
         loading = true
 
         InterstitialAd.load(
-            context,
+            activity,
             ROOMAI_INTERSTITIAL_AD_ID,
             AdRequest.Builder().build(),
             object : InterstitialAdLoadCallback() {
 
                 override fun onAdLoaded(ad: InterstitialAd) {
-                    loading = false
-                    interstitialAd = ad
+                    /*
+                     * AdMob callbacks normally arrive on Main, but keep
+                     * state changes explicitly on Main for safety.
+                     */
+                    activity.runOnUiThread {
+                        loading = false
+                        interstitialAd = ad
 
-                    ad.fullScreenContentCallback =
-                        object : FullScreenContentCallback() {
+                        ad.fullScreenContentCallback =
+                            object : FullScreenContentCallback() {
 
-                            override fun onAdDismissedFullScreenContent() {
-                                interstitialAd = null
-                                load(context)
+                                override fun onAdDismissedFullScreenContent() {
+                                    activity.runOnUiThread {
+                                        interstitialAd = null
+                                        load(activity)
+                                    }
+                                }
+
+                                override fun onAdFailedToShowFullScreenContent(
+                                    adError: com.google.android.gms.ads.AdError
+                                ) {
+                                    activity.runOnUiThread {
+                                        interstitialAd = null
+                                        load(activity)
+                                    }
+                                }
                             }
-
-                            override fun onAdFailedToShowFullScreenContent(
-                                adError: com.google.android.gms.ads.AdError
-                            ) {
-                                interstitialAd = null
-                                load(context)
-                            }
-                        }
+                    }
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
-                    loading = false
-                    interstitialAd = null
+                    activity.runOnUiThread {
+                        loading = false
+                        interstitialAd = null
+                    }
                 }
             }
         )
     }
 
     fun showAfterGeneration(context: Context) {
+        val activity = context as? android.app.Activity
+            ?: return
+
+        /*
+         * roomAiPlan() is local SharedPreferences work and does not need
+         * the UI thread. The actual AdMob operations do.
+         */
         if (roomAiPlan(context) == "pro") return
 
-        val activity = context as? android.app.Activity ?: return
-        val ad = interstitialAd
-
-        if (ad == null) {
-            load(context)
-            return
-        }
-
-        interstitialAd = null
-
         activity.runOnUiThread {
-            ad.show(activity)
-        }
+            val ad = interstitialAd
 
-        load(context)
+            if (ad == null) {
+                load(activity)
+                return@runOnUiThread
+            }
+
+            interstitialAd = null
+
+            ad.show(activity)
+
+            /*
+             * Do not call load() from the IO generation coroutine.
+             * The dismissal callback above will safely reload it on Main.
+             */
+        }
     }
 }
 
