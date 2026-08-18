@@ -682,7 +682,12 @@ def api_request(
             ):
                 raise RuntimeError(
                     "External image service returned HTML "
-                    "instead of the expected API response"
+                    "instead of the expected API response "
+                    "(endpoint=%s, content_type=%s)"
+                    % (
+                        url.split("?")[0],
+                        content_type or "unknown"
+                    )
                 )
 
             return body
@@ -733,7 +738,8 @@ def run_editor(image_path, ext, prompt):
         json.dumps(payload).encode(),
         {
             "Authorization": "Bearer " + KEY,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
     )
 
@@ -787,7 +793,7 @@ def run_editor(image_path, ext, prompt):
         "image_count": 1,
         "model": "qwen-edit",
         "aspect_ratio": "auto",
-        "resolution": "640px",
+        "resolution": "1k",
         "style": {
             "prompt": prompt
         },
@@ -804,7 +810,8 @@ def run_editor(image_path, ext, prompt):
         json.dumps(payload).encode(),
         {
             "Authorization": "Bearer " + KEY,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
     )
 
@@ -835,7 +842,8 @@ def run_editor(image_path, ext, prompt):
             status_url,
             "GET",
             headers={
-                "Authorization": "Bearer " + KEY
+                "Authorization": "Bearer " + KEY,
+                "Accept": "application/json"
             }
         )
 
