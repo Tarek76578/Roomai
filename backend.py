@@ -1052,6 +1052,38 @@ def process():
             products suitable for a {style} interior.
             Preserve architecture and perspective.""",
 
+        "budget_design":
+            f"""Design this {room} within a user-defined budget.
+
+            Budget constraint:
+            {selected}
+
+            User priorities:
+            {user_prompt or "Prioritize the highest-impact practical improvements."}
+
+            Preserve the existing architecture, walls, windows, doors,
+            floor, ceiling, perspective and camera angle.
+
+            Do not invent exact product prices or claim exact market prices.
+            Treat the budget as a design constraint.
+            Prioritize realistic, practical changes and avoid unnecessary
+            replacement of useful existing furniture.""",
+
+        "product_match":
+            f"""Visualize the requested product category in this {room}.
+
+            Requested product:
+            {selected}
+
+            Requirements:
+            {user_prompt or "Choose a practical option that fits the room."}
+
+            Preserve the existing architecture, windows, doors, floor,
+            ceiling, camera angle, perspective and unrelated objects.
+
+            The result should help the user decide whether this product
+            category visually fits the room.""",
+
         "fix":
             f"""Fix ONLY the specific problem identified by the user
             in this {room}.
@@ -1526,19 +1558,28 @@ def health():
 
 
 
-@app.get("/debug/gemini")
-def debug_gemini():
-    return {
-        "gemini_key_present": bool(os.environ.get("GEMINI_API_KEY")),
-        "gemini_model": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    }
+# Production: diagnostic/debug endpoints are disabled by default.
+# Enable only for controlled internal troubleshooting.
+if os.environ.get("ROOMAI_DEBUG_API_ENABLED", "").lower() == "true":
 
-@app.get("/gemini-models")
-def gemini_models_route():
-    try:
-        return jsonify(check_gemini_models())
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    @app.get("/debug/gemini")
+    def debug_gemini():
+        return {
+            "gemini_key_present": bool(
+                os.environ.get("GEMINI_API_KEY")
+            ),
+            "gemini_model": os.environ.get(
+                "GEMINI_MODEL",
+                "gemini-3.5-flash"
+            )
+        }
+
+    @app.get("/gemini-models")
+    def gemini_models_route():
+        try:
+            return jsonify(check_gemini_models())
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 
 @app.post("/diagnose")

@@ -124,6 +124,37 @@ for token in [
 if "MAX_CONTENT_LENGTH" not in backend:
     errors.append("BACKEND SAFETY: MAX_CONTENT_LENGTH missing")
 
+# Functional integrity invariants.
+for token in [
+    '"budget_design"',
+    '"product_match"',
+]:
+    if token not in backend:
+        errors.append(
+            f"BACKEND OPERATION CONTRACT MISSING: {token}"
+        )
+
+if 'ROOMAI_DEBUG_API_ENABLED' not in backend:
+    errors.append(
+        "BACKEND DEBUG GATE MISSING: ROOMAI_DEBUG_API_ENABLED"
+    )
+
+if 'getType(uri)' not in main:
+    errors.append(
+        "ANDROID IMAGE CONTRACT: MIME type is not read from Uri"
+    )
+
+if 'userGoal: String' not in main or '"goal"' not in main:
+    errors.append(
+        "DIAGNOSIS GOAL CONTRACT: user goal is not forwarded"
+    )
+
+if 'roomType' not in main:
+    errors.append(
+        "DIAGNOSIS CONTEXT: room type is not preserved"
+    )
+
+
 
 # ============================================================
 # FINAL AUDIT DECISION

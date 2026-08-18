@@ -158,6 +158,15 @@ private const val ROOMAI_PLAN_KEY = "plan"
 private const val ROOMAI_DEVICE_KEY = "device_id"
 
 private const val FREE_MONTHLY_LIMIT = 5
+
+private object RoomAIUsageEvents {
+    var version by mutableIntStateOf(0)
+        private set
+
+    fun notifyUsageChanged() {
+        version++
+    }
+}
 private const val PRO_MONTHLY_LIMIT = 100
 
 internal fun roomAiToken(context: Context): String {
@@ -474,7 +483,9 @@ fun RoomAIApp(
         mutableStateOf(true)
     }
 
-    LaunchedEffect(token) {
+    val usageRefreshVersion = RoomAIUsageEvents.version
+
+    LaunchedEffect(token, usageRefreshVersion) {
         usageLoading = true
 
         try {
@@ -1218,6 +1229,23 @@ fun Create() {
         }
 
         item {
+            OutlinedTextField(
+                value = goal,
+                onValueChange = {
+                    goal = it
+                    diagnosis = null
+                    error = null
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("What matters most to you? (optional)") },
+                placeholder = {
+                    Text("Example: better circulation, more storage, workspace...")
+                },
+                minLines = 2
+            )
+        }
+
+        item {
             Button(
                 enabled = imageUri != null && !loading,
                 onClick = {
@@ -1417,6 +1445,26 @@ suspend fun generateDesign(
                 ?.use { it.readBytes() }
                 ?: throw Exception("Could not read selected image")
 
+        val mimeType =
+            context.contentResolver.getType(uri)
+                ?.lowercase()
+                ?: "image/jpeg"
+
+        val normalizedMimeType =
+            when (mimeType) {
+                "image/jpeg",
+                "image/png",
+                "image/webp" -> mimeType
+                else -> "image/jpeg"
+            }
+
+        val extension =
+            when (normalizedMimeType) {
+                "image/png" -> "png"
+                "image/webp" -> "webp"
+                else -> "jpg"
+            }
+
         output.write(
             "--$boundary\r\n".toByteArray()
         )
@@ -1425,12 +1473,12 @@ suspend fun generateDesign(
             (
                 "Content-Disposition: form-data; " +
                         "name=\"image\"; " +
-                        "filename=\"room.jpg\"\r\n"
+                        "filename=\"room.$extension\"\r\n"
             ).toByteArray()
         )
 
         output.write(
-            "Content-Type: image/jpeg\r\n\r\n"
+            "Content-Type: $normalizedMimeType\r\n\r\n"
                 .toByteArray()
         )
 
@@ -1468,6 +1516,7 @@ suspend fun generateDesign(
         ?.groupValues
         ?.get(1)
         ?.also {
+            RoomAIUsageEvents.notifyUsageChanged()
             RoomAIAds.showAfterGeneration(context)
         }
         ?: throw Exception("Backend returned no image URL")
@@ -1484,7 +1533,8 @@ data class RoomProblem(
 suspend fun fixRoomProblem(
     context: Context,
     uri: Uri,
-    problem: RoomProblem
+    problem: RoomProblem,
+    roomType: String = "Existing Room"
 ): String {
     val instructions = """
         Fix this specific room problem.
@@ -1504,8 +1554,8 @@ suspend fun fixRoomProblem(
     return generateDesign(
         context = context,
         uri = uri,
-        room = "Living Room",
-        style = "Modern",
+        room = roomType.ifBlank { "Existing Room" },
+        style = "Existing",
         userPrompt = instructions,
         operation = "fix",
         selection = problem.title
@@ -1519,6 +1569,7 @@ data class RoomRisk(
 )
 
 data class RoomDiagnosis(
+    val roomType: String = "unknown",
     val summary: String,
     val score: Int,
     val problems: List<RoomProblem>,
@@ -1531,7 +1582,8 @@ data class RoomDiagnosis(
 
 suspend fun diagnoseRoom(
     context: Context,
-    uri: Uri
+    uri: Uri,
+    userGoal: String = ""
 ): RoomDiagnosis = withContext(Dispatchers.IO) {
 
     val boundary = "RoomAI-Diagnose-${UUID.randomUUID()}"
@@ -1577,11 +1629,38 @@ suspend fun diagnoseRoom(
             roomAiDeviceId(context)
         )
 
+        writeTextPart(
+            output,
+            boundary,
+            "goal",
+            userGoal
+        )
+
         val bytes =
             context.contentResolver
                 .openInputStream(uri)
                 ?.use { it.readBytes() }
                 ?: throw Exception("Could not read selected image")
+
+        val mimeType =
+            context.contentResolver.getType(uri)
+                ?.lowercase()
+                ?: "image/jpeg"
+
+        val normalizedMimeType =
+            when (mimeType) {
+                "image/jpeg",
+                "image/png",
+                "image/webp" -> mimeType
+                else -> "image/jpeg"
+            }
+
+        val extension =
+            when (normalizedMimeType) {
+                "image/png" -> "png"
+                "image/webp" -> "webp"
+                else -> "jpg"
+            }
 
         output.write(
             "--$boundary\r\n".toByteArray()
@@ -1591,12 +1670,12 @@ suspend fun diagnoseRoom(
             (
                 "Content-Disposition: form-data; " +
                         "name=\"image\"; " +
-                        "filename=\"room.jpg\"\r\n"
+                        "filename=\"room.$extension\"\r\n"
             ).toByteArray()
         )
 
         output.write(
-            "Content-Type: image/jpeg\r\n\r\n"
+            "Content-Type: $normalizedMimeType\r\n\r\n"
                 .toByteArray()
         )
 
@@ -1674,7 +1753,16 @@ suspend fun diagnoseRoom(
         return result
     }
 
+    val roomType =
+        diagnosis
+            .optJSONObject("room")
+            ?.optString("type", "unknown")
+            ?.trim()
+            .orEmpty()
+            .ifBlank { "unknown" }
+
     RoomDiagnosis(
+        roomType = roomType,
         summary = diagnosis.optString("summary"),
         score = diagnosis.optInt("score", 0),
         problems = problems,
@@ -3406,6 +3494,7 @@ fun Diagnose() {
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var diagnosis by remember { mutableStateOf<RoomDiagnosis?>(null) }
+    var goal by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -3585,8 +3674,9 @@ fun Diagnose() {
 
                         try {
                             diagnosis = diagnoseRoom(
-                                context,
-                                uri
+                                context = context,
+                                uri = uri,
+                                userGoal = goal
                             )
                         } catch (e: Exception) {
                             error = e.message ?: "Diagnosis failed"
@@ -3788,7 +3878,8 @@ fun Diagnose() {
                                             val url = fixRoomProblem(
                                                 context = context,
                                                 uri = uri,
-                                                problem = problem
+                                                problem = problem,
+                                                roomType = result.roomType
                                             )
 
                                             fixedResultUrl = url
