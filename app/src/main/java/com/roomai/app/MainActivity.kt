@@ -849,17 +849,208 @@ fun RoomAIHomeRedesigned(
         Spacer(Modifier.height(28.dp))
 
         // =====================================================
-        // NO DUPLICATE HOME BUTTONS
+        // ROOMAI TOOL MAP
         //
-        // Create / Designs / Menu already exist in the
-        // application's bottom navigation.
+        // These capabilities already exist in the application.
+        // They are surfaced here so users can actually discover
+        // and reach them without changing the core navigation.
         // =====================================================
 
         Text(
-            text = "Your other areas are available from the navigation bar.",
-            style = MaterialTheme.typography.bodySmall,
+            text = "Explore RoomAI",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(6.dp))
+
+        Text(
+            text = "Choose the tool that matches what you want to do.",
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            text = "Create & improve",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("styles") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Styles")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("furniture") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Furniture")
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("enhance") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Enhance")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("products") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Products")
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        Text(
+            text = "Solve & analyze",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("decision_engine") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Decision")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("diagnose") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Diagnose")
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        Text(
+            text = "Advanced workspace",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("ai_studio") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("AI Studio")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("precision") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Precision")
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("room_memory") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Room Memory")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    nav.navigate("professional") {
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Professional")
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        OutlinedButton(
+            onClick = {
+                nav.navigate("growth") {
+                    launchSingleTop = true
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Growth & next steps")
+        }
 
         Spacer(Modifier.height(16.dp))
     }
