@@ -50,6 +50,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
@@ -851,4 +852,214 @@ fun RoomAIHomeRedesigned(
 
         Spacer(Modifier.height(16.dp))
     }
+}
+
+
+// Recovered historical domain contract.
+data class RoomDiagnosis(
+    val summary: String,
+    val score: Int,
+    val problems: List<RoomProblem>,
+    val risks: List<RoomRisk>,
+    val keep: List<String>,
+    val replace: List<String>,
+    val upgrade: List<String>,
+    val lifestyleQuestions: List<String>
+)
+
+suspend fun diagnoseRoom(
+    context: Context,
+    uri: Uri
+): RoomDiagnosis = withContext(Dispatchers.IO) {
+
+    val boundary = "RoomAI-Diagnose-${UUID.randomUUID()}"
+
+    Log.d("RoomAI", "DIAGNOSE: starting request")
+
+    val connection =
+        URL(DIAGNOSE_URL).openConnection() as HttpURLConnection
+
+    connection.requestMethod = "POST"
+    connection.doOutput = true
+    connection.connectTimeout = 30000
+    connection.readTimeout = 120000
+
+    connection.setRequestProperty(
+        "Content-Type",
+        "multipart/form-data; boundary=$boundary"
+    )
+
+    // Keep /diagnose identity consistent with /generate.
+    // Authenticated users are identified by their server-side session.
+    // Guests are identified by the installation/device key.
+    val authToken = roomAiToken(context)
+
+    if (authToken.isNotBlank()) {
+        connection.setRequestProperty(
+            "Authorization",
+            "Bearer $authToken"
+        )
+    }
+
+    connection.setRequestProperty(
+        "X-RoomAI-Device",
+        roomAiDeviceId(context)
+    )
+
+    DataOutputStream(connection.outputStream).use { output ->
+
+        writeTextPart(
+            output,
+            boundary,
+            "device_id",
+            roomAiDeviceId(context)
+        )
+
+        val bytes =
+            context.contentResolver
+                .openInputStream(uri)
+                ?.use { it.readBytes() }
+                ?: throw Exception("Could not read selected image")
+
+        output.write(
+            "--$boundary\r\n".toByteArray()
+        )
+
+        output.write(
+            (
+                "Content-Disposition: form-data; " +
+                        "name=\"image\"; " +
+                        "filename=\"room.jpg\"\r\n"
+            ).toByteArray()
+        )
+
+        output.write(
+            "Content-Type: image/jpeg\r\n\r\n"
+                .toByteArray()
+        )
+
+        output.write(bytes)
+        output.write("\r\n".toByteArray())
+        output.write("--$boundary--\r\n".toByteArray())
+    }
+
+    val code = connection.responseCode
+
+    val stream =
+        if (code in 200..299)
+            connection.inputStream
+        else
+            connection.errorStream
+
+    val response =
+        stream?.bufferedReader()?.use { it.readText() }
+            ?: throw Exception("Empty diagnosis response")
+
+    Log.d("RoomAI", "DIAGNOSE: response received")
+
+    if (code !in 200..299) {
+        throw Exception(response)
+    }
+
+    val root = JSONObject(response)
+    val diagnosis = root.getJSONObject("diagnosis")
+
+    val problems = mutableListOf<RoomProblem>()
+    val problemArray = diagnosis.optJSONArray("problems")
+
+    if (problemArray != null) {
+        for (i in 0 until problemArray.length()) {
+            val item = problemArray.getJSONObject(i)
+
+            problems.add(
+                RoomProblem(
+                    title = item.optString("title"),
+                    severity = item.optString("severity"),
+                    reason = item.optString("reason"),
+                    recommendation = item.optString("recommendation")
+                )
+            )
+        }
+    }
+
+    val risks = mutableListOf<RoomRisk>()
+    val riskArray = diagnosis.optJSONArray("risk_scanner")
+
+    if (riskArray != null) {
+        for (i in 0 until riskArray.length()) {
+            val item = riskArray.getJSONObject(i)
+
+            risks.add(
+                RoomRisk(
+                    type = item.optString("type"),
+                    severity = item.optString("severity"),
+                    message = item.optString("message")
+                )
+            )
+        }
+    }
+
+    fun readStrings(name: String): List<String> {
+        val result = mutableListOf<String>()
+        val array = diagnosis.optJSONArray(name)
+
+        if (array != null) {
+            for (i in 0 until array.length()) {
+                result.add(array.optString(i))
+            }
+        }
+
+        return result
+    }
+
+    RoomDiagnosis(
+        summary = diagnosis.optString("summary"),
+        score = diagnosis.optInt("score", 0),
+        problems = problems,
+        risks = risks,
+        keep = readStrings("keep"),
+        replace = readStrings("replace"),
+        upgrade = readStrings("upgrade"),
+        lifestyleQuestions = readStrings("lifestyle_questions")
+    )
+}
+
+
+// Recovered historical domain contract.
+data class RoomProblem(
+    val title: String,
+    val severity: String,
+    val reason: String,
+    val recommendation: String
+)
+
+suspend fun fixRoomProblem(
+    context: Context,
+    uri: Uri,
+    problem: RoomProblem
+): String {
+    val instructions = """
+        Fix this specific room problem.
+
+        Problem: ${problem.title}
+        Severity: ${problem.severity}
+        Reason: ${problem.reason}
+        Recommendation: ${problem.recommendation}
+
+        Make only the changes necessary to solve this problem.
+        Preserve the existing room architecture, walls, doors,
+        windows, floor, ceiling, perspective and camera angle.
+        Preserve unrelated furniture and objects.
+        The result must be photorealistic and practical.
+    """.trimIndent()
+
+    return generateDesign(
+        context = context,
+        uri = uri,
+        room = "Living Room",
+        style = "Modern",
+        userPrompt = instructions,
+        operation = "fix",
+        selection = problem.title
+    )
 }
