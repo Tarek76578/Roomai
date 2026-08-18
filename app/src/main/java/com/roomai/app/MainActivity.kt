@@ -64,8 +64,8 @@ import java.util.UUID
 import org.json.JSONObject
 
 
-private const val ROOMAI_TEST_INTERSTITIAL_AD =
-    "ca-app-pub-3940256099942544/1033173712"
+private val ROOMAI_INTERSTITIAL_AD_ID =
+    BuildConfig.ROOMAI_INTERSTITIAL_AD_ID
 
 private object RoomAIAds {
 
@@ -84,7 +84,7 @@ private object RoomAIAds {
 
         InterstitialAd.load(
             context,
-            ROOMAI_TEST_INTERSTITIAL_AD,
+            ROOMAI_INTERSTITIAL_AD_ID,
             AdRequest.Builder().build(),
             object : InterstitialAdLoadCallback() {
 
@@ -153,6 +153,7 @@ private const val ROOMAI_TOKEN_KEY = "auth_token"
 private const val PREFS = "roomai_designs"
 
 private const val ROOMAI_PLAN_PREFS = "roomai_account"
+private const val ROOMAI_UI_PREFS = "roomai_ui"
 private const val ROOMAI_PLAN_KEY = "plan"
 private const val ROOMAI_DEVICE_KEY = "device_id"
 
@@ -262,6 +263,13 @@ private suspend fun roomAiLogout(context: Context) =
         val token = roomAiToken(context)
 
         if (token.isBlank()) {
+            context.getSharedPreferences(
+                ROOMAI_PLAN_PREFS,
+                Context.MODE_PRIVATE
+            ).edit()
+                .remove("account_email")
+                .remove(ROOMAI_PLAN_KEY)
+                .apply()
             return@withContext
         }
 
@@ -286,6 +294,14 @@ private suspend fun roomAiLogout(context: Context) =
             // Local logout must still succeed if the network is unavailable.
         } finally {
             clearRoomAiToken(context)
+
+            context.getSharedPreferences(
+                ROOMAI_PLAN_PREFS,
+                Context.MODE_PRIVATE
+            ).edit()
+                .remove("account_email")
+                .remove(ROOMAI_PLAN_KEY)
+                .apply()
         }
     }
 
@@ -408,12 +424,29 @@ class MainActivity : ComponentActivity() {
         RoomAIAds.initialize(this)
 
         setContent {
-            var dark by remember { mutableStateOf(false) }
+            val uiPrefs = remember {
+                getSharedPreferences(
+                    ROOMAI_UI_PREFS,
+                    Context.MODE_PRIVATE
+                )
+            }
+
+            var dark by remember {
+                mutableStateOf(
+                    uiPrefs.getBoolean("dark_mode", false)
+                )
+            }
 
             RoomAITheme(dark) {
                 RoomAIApp(
                     dark = dark,
-                    setDark = { dark = it }
+                    setDark = { value ->
+                        dark = value
+
+                        uiPrefs.edit()
+                            .putBoolean("dark_mode", value)
+                            .apply()
+                    }
                 )
             }
         }
@@ -658,8 +691,14 @@ fun RoomAIApp(
 
             composable("menu") {
                 Menu(
+                    loggedIn = token.isNotBlank(),
                     dark = dark,
                     setDark = setDark,
+                    onLogin = {
+                        nav.navigate("auth") {
+                            launchSingleTop = true
+                        }
+                    },
                     onLogout = {
                         scope.launch {
                             roomAiLogout(context)
@@ -738,7 +777,7 @@ fun RoomAIHomeRedesigned(
                 Spacer(Modifier.height(16.dp))
 
                 Text(
-                    text = "Analyze my room",
+                    text = "Diagnose my room",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -4964,6 +5003,8 @@ fun Products() {
 fun Menu(
     dark: Boolean,
     setDark: (Boolean) -> Unit,
+    loggedIn: Boolean,
+    onLogin: () -> Unit,
     onLogout: () -> Unit
 ) {
     LazyColumn(
@@ -5036,18 +5077,32 @@ fun Menu(
                     Spacer(Modifier.height(14.dp))
 
                     OutlinedButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = onLogout
-                    ) {
-                        Icon(
-                            Icons.Default.Logout,
-                            contentDescription = null
-                        )
+                          modifier = Modifier.fillMaxWidth(),
+                          onClick = {
+                              if (loggedIn) {
+                                  onLogout()
+                              } else {
+                                  onLogin()
+                              }
+                          }
+                      ) {
+                          Icon(
+                              if (loggedIn)
+                                  Icons.Default.Logout
+                              else
+                                  Icons.Default.Login,
+                              contentDescription = null
+                          )
 
-                        Spacer(Modifier.width(8.dp))
+                          Spacer(Modifier.width(8.dp))
 
-                        Text("Log out")
-                    }
+                          Text(
+                              if (loggedIn)
+                                  "Log out"
+                              else
+                                  "Log in"
+                          )
+                      }
                 }
             }
         }

@@ -15,6 +15,15 @@ from diagnostic_engine import build_diagnostic_prompt, normalize_diagnosis
 
 app = Flask(__name__)
 
+@app.errorhandler(413)
+def roomai_payload_too_large(_error):
+    return jsonify({
+        "error": "Image is too large",
+        "code": "PAYLOAD_TOO_LARGE",
+        "max_bytes": app.config.get("MAX_CONTENT_LENGTH")
+    }), 413
+
+
 @app.after_request
 def roomai_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
