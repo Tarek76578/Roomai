@@ -744,7 +744,7 @@ fun RoomAIHomeRedesigned(
                 )
 
                 Text(
-                    text = "Solve the room. Then improve it.",
+                    text = "Take a photo. RoomAI will find what needs to improve.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -808,7 +808,7 @@ fun RoomAIHomeRedesigned(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "What is wrong with your room?",
+                            text = "What do you want RoomAI to help with?",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -816,7 +816,7 @@ fun RoomAIHomeRedesigned(
                         Spacer(Modifier.height(5.dp))
 
                         Text(
-                            text = "RoomAI analyzes the evidence, identifies the most important problems and builds a practical solution.",
+                            text = "Start with your real room. RoomAI can diagnose the problems even when you do not know what to ask.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -841,7 +841,7 @@ fun RoomAIHomeRedesigned(
 
                     Spacer(Modifier.width(8.dp))
 
-                    Text("Diagnose my room")
+                    Text("Solve my room")
                 }
             }
         }
@@ -853,7 +853,7 @@ fun RoomAIHomeRedesigned(
         // =========================================================
 
         Text(
-            text = "What are you trying to fix?",
+            text = "Want to focus on something specific?",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
@@ -861,7 +861,7 @@ fun RoomAIHomeRedesigned(
         Spacer(Modifier.height(6.dp))
 
         Text(
-            text = "Choose the problem that matters most. RoomAI will use it to prioritize the diagnosis.",
+            text = "Optional. RoomAI can diagnose the room for you if you are not sure what is wrong.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -944,50 +944,6 @@ fun RoomAIHomeRedesigned(
         Spacer(Modifier.height(28.dp))
 
         // =========================================================
-        // HOW ROOMAI SOLVES THE PROBLEM
-        // =========================================================
-
-        Text(
-            text = "How RoomAI works",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        RoomAIStepCard(
-            number = "1",
-            title = "Understand",
-            description = "You tell RoomAI what you want to fix and provide the room evidence."
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        RoomAIStepCard(
-            number = "2",
-            title = "Diagnose",
-            description = "AI separates visible evidence from assumptions and ranks the real problems."
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        RoomAIStepCard(
-            number = "3",
-            title = "Solve",
-            description = "You get prioritized actions, constraints, trade-offs and practical next steps."
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        RoomAIStepCard(
-            number = "4",
-            title = "Visualize",
-            description = "Only after the solution is clear do we generate a visual concept."
-        )
-
-        Spacer(Modifier.height(28.dp))
-
-        // =========================================================
         // SECONDARY TOOLS
         // =========================================================
 
@@ -1028,7 +984,7 @@ fun RoomAIHomeRedesigned(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        "Professional workspace",
+                        "Professional",
                         fontWeight = FontWeight.Bold
                     )
 
@@ -1048,7 +1004,7 @@ fun RoomAIHomeRedesigned(
         Spacer(Modifier.height(16.dp))
 
         Text(
-            text = "Useful tools",
+            text = "More tools",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -1118,7 +1074,7 @@ fun RoomAIHomeRedesigned(
                     )
 
                     Text(
-                        text = "Use visualization when you already know what you want.",
+                        text = "Already know what you want? Create it directly.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1172,14 +1128,6 @@ fun RoomAIHomeRedesigned(
         }
 
         Spacer(Modifier.height(22.dp))
-
-        Text(
-            text = "RoomAI is built to help you make a better decision before you spend money.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(Modifier.height(12.dp))
     }
 }
 
