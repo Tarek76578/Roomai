@@ -3661,6 +3661,10 @@ fun Diagnose() {
                                 uri = uri,
                                 userGoal = goal
                             )
+
+                            // Diagnose consumes one AI generation on success.
+                            // Notify the global usage UI immediately.
+                            RoomAIUsageEvents.notifyUsageChanged()
                         } catch (e: Exception) {
                             error = e.message ?: "Diagnosis failed"
                         } finally {
@@ -3846,6 +3850,14 @@ fun Diagnose() {
 
                             Text(problem.recommendation)
 
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                "Fixing this problem uses 1 additional AI generation.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
                             Spacer(Modifier.height(12.dp))
 
                             Button(
@@ -3867,6 +3879,9 @@ fun Diagnose() {
 
                                             fixedResultUrl = url
                                             fixedProblemTitle = problem.title
+
+                                            // Fix consumes one additional AI generation.
+                                            RoomAIUsageEvents.notifyUsageChanged()
 
                                             saveDesign(
                                                 context,
