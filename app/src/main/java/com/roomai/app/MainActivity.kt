@@ -718,13 +718,7 @@ fun RoomAIHomeRedesigned(
         // =====================================================
 
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    nav.navigate("problem_first") {
-                        launchSingleTop = true
-                    }
-                },
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -775,7 +769,7 @@ fun RoomAIHomeRedesigned(
 
                     Spacer(Modifier.width(8.dp))
 
-                    Text("Start")
+                    Text("Analyze my room")
                 }
             }
         }
@@ -5103,4 +5097,4 @@ fun Menu(
             )
         }
     }
-}
+}\n
