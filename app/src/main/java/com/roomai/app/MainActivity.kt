@@ -1,11 +1,11 @@
 package com.roomai.app
 
-import androidx.compose.foundation.Image
+import androidx.compose.fountion.Image
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.fountion.verticalScroll
+import androidx.compose.fountion.rememberScrollState
+import androidx.compose.fountion.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 
 import androidx.compose.ui.draw.clip
@@ -15,7 +15,7 @@ import com.roomai.app.ui.RoomAITheme
 import android.content.Context
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.LoadError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
@@ -28,17 +28,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.fountion.background
+import androidx.compose.fountion.gestures.rememberTransformableState
+import androidx.compose.fountion.gestures.transformable
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.fountion.clickable
+import androidx.compose.fountion.layout.RowScope
+import androidx.compose.fountion.layout.*
+import androidx.compose.fountion.lazy.LazyColumn
+import androidx.compose.fountion.lazy.LazyRow
+import androidx.compose.fountion.lazy.items
+import androidx.compose.fountion.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -56,7 +56,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.DataOutputStream
+import java.io.taOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -108,7 +108,7 @@ private object RoomAIAds {
                         }
                 }
 
-                override fun onAdFailedToLoad(error: LoadAdError) {
+                override fun onAdFailedToLoad(error: LoadError) {
                     loading = false
                     interstitialAd = null
                 }
@@ -395,17 +395,12 @@ private fun roomAiPlan(context: Context): String {
             if (it == "pro") "pro" else "free"
         }
         ?: "free"
-}
-
-data class RoomAIUsage(
+}ta class RoomAIUsage(
     val plan: String = "free",
     val used: Int = 0,
     val limit: Int = FREE_MONTHLY_LIMIT,
     val remaining: Int = FREE_MONTHLY_LIMIT
-)
-
-
-data class SavedDesign(
+)ta class SavedDesign(
     val id: String,
     val url: String,
     val room: String,
@@ -419,12 +414,11 @@ class MainActivity : ComponentActivity() {
         RoomAIAds.initialize(this)
 
         setContent {
-            var dark by remember { mutableStateOf(false) }
+            varrk by remember { mutableStateOf(false) }
 
-            RoomAITheme(dark) {
-                RoomAIApp(
-                    dark = dark,
-                    setDark = { dark = it }
+            RoomAITheme(rk) {
+                RoomAIApp(rk =rk,
+                    setrk = {rk = it }
                 )
             }
         }
@@ -432,9 +426,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun RoomAIApp(
-    dark: Boolean,
-    setDark: (Boolean) -> Unit
+fun RoomAIApp(rk: Boolean,
+    setrk: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -539,8 +532,7 @@ fun RoomAIApp(
             // ----------------------------------------------------
 
             composable("auth") {
-                AuthScreen(
-                    dark = dark,
+                AuthScreen(rk =rk,
                     onAuthenticated = { newToken ->
                         saveRoomAiToken(context, newToken)
                         token = newToken
@@ -618,7 +610,7 @@ fun RoomAIApp(
             }
 
             // ----------------------------------------------------
-            // SECONDARY TOOLS
+            // SECONRY TOOLS
             // ----------------------------------------------------
 
             composable("styles") {
@@ -679,9 +671,8 @@ fun RoomAIApp(
             // ----------------------------------------------------
 
             composable("menu") {
-                Menu(
-                    dark = dark,
-                    setDark = setDark,
+                Menu(rk =rk,
+                    setrk = setrk,
                     onLogout = {
                         scope.launch {
                             roomAiLogout(context)
@@ -703,6 +694,18 @@ fun RoomAIApp(
 
 
 @Composable
+
+private fun roomAISafeBack(
+    navController: NavController
+) {
+    if (!navController.popBackStack()) {
+        navController.navigate("home") {
+            popUpTo("home") { inclusive = false }
+            launchSingleTop = true
+        }
+    }
+}
+
 fun RoomAIHomeRedesigned(
     nav: NavHostController,
     loggedIn: Boolean = false,
@@ -841,7 +844,7 @@ fun RoomAIHomeRedesigned(
 
                     Spacer(Modifier.width(8.dp))
 
-                    Text("Diagnose my room")
+                    Text("Analyze my room")
                 }
             }
         }
@@ -853,7 +856,7 @@ fun RoomAIHomeRedesigned(
         // =========================================================
 
         Text(
-            text = "What are you trying to fix?",
+            text = "What do you want to improve?",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
@@ -874,7 +877,7 @@ fun RoomAIHomeRedesigned(
         ) {
             RoomAIProblemQuickCard(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.SpaceDashboard,
+                icon = Icons.Default.Spaceshboard,
                 title = "Too crowded",
                 description = "Use space better"
             ) {
@@ -988,7 +991,7 @@ fun RoomAIHomeRedesigned(
         Spacer(Modifier.height(28.dp))
 
         // =========================================================
-        // SECONDARY TOOLS
+        // SECONRY TOOLS
         // =========================================================
 
         Card(
@@ -1002,7 +1005,7 @@ fun RoomAIHomeRedesigned(
             shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(
                 containerColor =
-                    MaterialTheme.colorScheme.secondaryContainer
+                    MaterialTheme.colorScheme.seconryContainer
             )
         ) {
             Row(
@@ -1013,7 +1016,7 @@ fun RoomAIHomeRedesigned(
             ) {
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.seconry
                 ) {
                     Icon(
                         Icons.Default.WorkspacePremium,
@@ -1028,7 +1031,7 @@ fun RoomAIHomeRedesigned(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        "Professional workspace",
+                        "Professional",
                         fontWeight = FontWeight.Bold
                     )
 
@@ -1048,7 +1051,7 @@ fun RoomAIHomeRedesigned(
         Spacer(Modifier.height(16.dp))
 
         Text(
-            text = "Useful tools",
+            text = "More",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -1098,7 +1101,7 @@ fun RoomAIHomeRedesigned(
             ) {
                 Surface(
                     shape = RoundedCornerShape(13.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer
+                    color = MaterialTheme.colorScheme.seconryContainer
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
@@ -1134,7 +1137,7 @@ fun RoomAIHomeRedesigned(
         Spacer(Modifier.height(24.dp))
 
         // =========================================================
-        // USAGE — SECONDARY
+        // USAGE — SECONRY
         // =========================================================
 
         if (loggedIn) {
@@ -1202,7 +1205,7 @@ private fun RoomAIProblemQuickCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer
+                color = MaterialTheme.colorScheme.seconryContainer
             ) {
                 Icon(
                     imageVector = icon,
@@ -1300,7 +1303,7 @@ private fun RoomAIHomeAction(
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer
+                color = MaterialTheme.colorScheme.seconryContainer
             ) {
                 Icon(
                     imageVector = icon,
@@ -1371,8 +1374,7 @@ fun HomeActionCard(
 }
 
 @Composable
-fun AuthScreen(
-    dark: Boolean,
+fun AuthScreen(rk: Boolean,
     onAuthenticated: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -1398,7 +1400,7 @@ fun AuthScreen(
         mutableStateOf("")
     }
 
-    RoomAITheme(dark) {
+    RoomAITheme(rk) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1621,7 +1623,7 @@ fun FeatureGrid(nav: NavHostController) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             SmallFeature(
-                "Solve my room",
+                "Analyze my room",
                 Icons.Default.Palette,
                 Modifier.weight(1f)
             ) {
@@ -1824,7 +1826,7 @@ fun Create() {
                         verticalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            Icons.Default.AddAPhoto,
+                            Icons.Default.AdPhoto,
                             null,
                             modifier = Modifier.size(50.dp)
                         )
@@ -1965,7 +1967,7 @@ fun Create() {
                 } else {
                     Icon(Icons.Default.AutoAwesome, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Solve my room")
+                    Text("Analyze my room")
                 }
             }
         }
@@ -2049,7 +2051,7 @@ suspend fun generateDesign(
     selection: String = ""
 ): String = withContext(Dispatchers.IO) {
 
-    val boundary = "RoomAI-${UUID.randomUUID()}"
+    val bounry = "RoomAI-${UUID.randomUUID()}"
 
     val connection =
         URL(BACKEND_URL).openConnection() as HttpURLConnection
@@ -2061,7 +2063,7 @@ suspend fun generateDesign(
 
     connection.setRequestProperty(
         "Content-Type",
-        "multipart/form-data; boundary=$boundary"
+        "multipart/form-ta; bounry=$bounry"
     )
 
     val authToken = roomAiToken(context)
@@ -2076,26 +2078,24 @@ suspend fun generateDesign(
     connection.setRequestProperty(
         "X-RoomAI-Device",
         roomAiDeviceId(context)
-    )
+    )taOutputStream(connection.outputStream).use { output ->
 
-    DataOutputStream(connection.outputStream).use { output ->
-
-        writeTextPart(output, boundary, "room", room)
-        writeTextPart(output, boundary, "style", style)
-        writeTextPart(output, boundary, "operation", operation)
-        writeTextPart(output, boundary, "selection", selection)
-        writeTextPart(output, boundary, "prompt", userPrompt)
+        writeTextPart(output, bounry, "room", room)
+        writeTextPart(output, bounry, "style", style)
+        writeTextPart(output, bounry, "operation", operation)
+        writeTextPart(output, bounry, "selection", selection)
+        writeTextPart(output, bounry, "prompt", userPrompt)
 
         writeTextPart(
             output,
-            boundary,
+            bounry,
             "device_id",
             roomAiDeviceId(context)
         )
 
         writeTextPart(
             output,
-            boundary,
+            bounry,
             "plan",
             roomAiPlan(context)
         )
@@ -2107,12 +2107,12 @@ suspend fun generateDesign(
                 ?: throw Exception("Could not read selected image")
 
         output.write(
-            "--$boundary\r\n".toByteArray()
+            "--$bounry\r\n".toByteArray()
         )
 
         output.write(
             (
-                "Content-Disposition: form-data; " +
+                "Content-Disposition: form-ta; " +
                         "name=\"image\"; " +
                         "filename=\"room.jpg\"\r\n"
             ).toByteArray()
@@ -2125,7 +2125,7 @@ suspend fun generateDesign(
 
         output.write(bytes)
         output.write("\r\n".toByteArray())
-        output.write("--$boundary--\r\n".toByteArray())
+        output.write("--$bounry--\r\n".toByteArray())
     }
 
     val code = connection.responseCode
@@ -2160,14 +2160,11 @@ suspend fun generateDesign(
             RoomAIAds.showAfterGeneration(context)
         }
         ?: throw Exception("Backend returned no image URL")
-}
-
-
-data class RoomProblem(
+}ta class RoomProblem(
     val title: String,
     val severity: String,
     val reason: String,
-    val recommendation: String
+    val recommention: String
 )
 
 suspend fun fixRoomProblem(
@@ -2181,7 +2178,7 @@ suspend fun fixRoomProblem(
         Problem: ${problem.title}
         Severity: ${problem.severity}
         Reason: ${problem.reason}
-        Recommendation: ${problem.recommendation}
+        Recommention: ${problem.recommention}
 
         Make only the changes necessary to solve this problem.
         Preserve the existing room architecture, walls, doors,
@@ -2199,15 +2196,11 @@ suspend fun fixRoomProblem(
         operation = "fix",
         selection = problem.title
     )
-}
-
-data class RoomRisk(
+}ta class RoomRisk(
     val type: String,
     val severity: String,
     val message: String
-)
-
-data class RoomDiagnosis(
+)ta class RoomDiagnosis(
     val summary: String,
     val score: Int,
     val problems: List<RoomProblem>,
@@ -2223,7 +2216,7 @@ suspend fun diagnoseRoom(
     uri: Uri
 ): RoomDiagnosis = withContext(Dispatchers.IO) {
 
-    val boundary = "RoomAI-Diagnose-${UUID.randomUUID()}"
+    val bounry = "RoomAI-Diagnose-${UUID.randomUUID()}"
 
     Log.d("RoomAI", "DIAGNOSE: starting request")
 
@@ -2237,7 +2230,7 @@ suspend fun diagnoseRoom(
 
     connection.setRequestProperty(
         "Content-Type",
-        "multipart/form-data; boundary=$boundary"
+        "multipart/form-ta; bounry=$bounry"
     )
 
     // Keep /diagnose identity consistent with /generate.
@@ -2255,13 +2248,11 @@ suspend fun diagnoseRoom(
     connection.setRequestProperty(
         "X-RoomAI-Device",
         roomAiDeviceId(context)
-    )
-
-    DataOutputStream(connection.outputStream).use { output ->
+    )taOutputStream(connection.outputStream).use { output ->
 
         writeTextPart(
             output,
-            boundary,
+            bounry,
             "device_id",
             roomAiDeviceId(context)
         )
@@ -2273,12 +2264,12 @@ suspend fun diagnoseRoom(
                 ?: throw Exception("Could not read selected image")
 
         output.write(
-            "--$boundary\r\n".toByteArray()
+            "--$bounry\r\n".toByteArray()
         )
 
         output.write(
             (
-                "Content-Disposition: form-data; " +
+                "Content-Disposition: form-ta; " +
                         "name=\"image\"; " +
                         "filename=\"room.jpg\"\r\n"
             ).toByteArray()
@@ -2291,7 +2282,7 @@ suspend fun diagnoseRoom(
 
         output.write(bytes)
         output.write("\r\n".toByteArray())
-        output.write("--$boundary--\r\n".toByteArray())
+        output.write("--$bounry--\r\n".toByteArray())
     }
 
     val code = connection.responseCode
@@ -2327,7 +2318,7 @@ suspend fun diagnoseRoom(
                     title = item.optString("title"),
                     severity = item.optString("severity"),
                     reason = item.optString("reason"),
-                    recommendation = item.optString("recommendation")
+                    recommention = item.optString("recommention")
                 )
             )
         }
@@ -2376,18 +2367,18 @@ suspend fun diagnoseRoom(
 }
 
 fun writeTextPart(
-    output: DataOutputStream,
-    boundary: String,
+    output:taOutputStream,
+    bounry: String,
     name: String,
     value: String
 ) {
     output.write(
-        "--$boundary\r\n".toByteArray()
+        "--$bounry\r\n".toByteArray()
     )
 
     output.write(
         (
-            "Content-Disposition: form-data; " +
+            "Content-Disposition: form-ta; " +
                     "name=\"$name\"\r\n\r\n"
         ).toByteArray()
     )
@@ -2708,9 +2699,7 @@ fun EmptyLibrary() {
             )
         }
     }
-}
-
-data class ToolOption(
+}ta class ToolOption(
     val title: String,
     val description: String
 )
@@ -2970,7 +2959,7 @@ fun RoomAIPowerStudio() {
                         verticalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            Icons.Default.AddAPhoto,
+                            Icons.Default.AdPhoto,
                             null,
                             modifier = Modifier.size(48.dp)
                         )
@@ -3779,7 +3768,7 @@ fun RoomAIPowerStudio() {
 
                                 Spacer(Modifier.height(6.dp))
 
-                                Text(problem.recommendation)
+                                Text(problem.recommention)
                             }
                         }
                     }
@@ -4213,7 +4202,7 @@ fun Diagnose() {
                         verticalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            Icons.Default.AddAPhoto,
+                            Icons.Default.AdPhoto,
                             contentDescription = null,
                             modifier = Modifier.size(52.dp)
                         )
@@ -4460,7 +4449,7 @@ fun Diagnose() {
 
                             Spacer(Modifier.height(6.dp))
 
-                            Text(problem.recommendation)
+                            Text(problem.recommention)
 
                             Spacer(Modifier.height(12.dp))
 
@@ -4586,7 +4575,7 @@ fun Diagnose() {
 
                             Spacer(Modifier.height(4.dp))
 
-                            Text(problem.recommendation)
+                            Text(problem.recommention)
 
                             Spacer(Modifier.height(12.dp))
 
@@ -4695,7 +4684,7 @@ fun Diagnose() {
                             Spacer(Modifier.height(6.dp))
 
                             Text(
-                                "Your room already has a strong foundation. RoomAI can still suggest style and upgrade ideas."
+                                "Your room already has a strong fountion. RoomAI can still suggest style and upgrade ideas."
                             )
                         }
                     }
@@ -4802,7 +4791,7 @@ fun Diagnose() {
 
                 item {
                     DiagnoseListCard(
-                        title = "Questions that can improve future recommendations",
+                        title = "Questions that can improve future recommentions",
                         icon = Icons.Default.Person,
                         values = result.lifestyleQuestions
                     )
@@ -4958,7 +4947,7 @@ fun ToolPage(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            Icons.Default.AddAPhoto,
+                            Icons.Default.AdPhoto,
                             null,
                             modifier = Modifier.size(48.dp)
                         )
@@ -5239,7 +5228,7 @@ fun ToolPage(
                                 }
 
                                 Text(
-                                    if (showBefore) "Original Room" else "Solve my room",
+                                    if (showBefore) "Original Room" else "Analyze my room",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -5277,7 +5266,7 @@ fun ToolPage(
     @Composable
 fun Styles() {
     ToolPage(
-        title = "Solve my room",
+        title = "Analyze my room",
         subtitle = "Choose a style and let AI redesign your room.",
         operation = "generate",
         options = listOf(
@@ -5344,9 +5333,8 @@ fun Products() {
 }
 
 @Composable
-fun Menu(
-    dark: Boolean,
-    setDark: (Boolean) -> Unit,
+fun Menu(rk: Boolean,
+    setrk: (Boolean) -> Unit,
     onLogout: () -> Unit
 ) {
     LazyColumn(
@@ -5450,7 +5438,7 @@ fun Menu(
 
                         Text(
                             if (loggedIn)
-                                "Log out"
+                                "Sign out"
                             else
                                 "Sign in / Create account"
                         )
@@ -5462,15 +5450,15 @@ fun Menu(
         item {
             ListItem(
                 headlineContent = {
-                    Text("Dark Mode")
+                    Text("rk Mode")
                 },
                 leadingContent = {
-                    Icon(Icons.Default.DarkMode, null)
+                    Icon(Icons.Default.rkMode, null)
                 },
                 trailingContent = {
                     Switch(
-                        checked = dark,
-                        onCheckedChange = setDark
+                        checked =rk,
+                        onCheckedChange = setrk
                     )
                 }
             )
