@@ -851,214 +851,172 @@ fun RoomAIHomeRedesigned(
 
         Spacer(Modifier.height(28.dp))
 
+
         // =====================================================
-        // ROOMAI TOOL MAP
+        // SIMPLE HOME DISCOVERY
         //
-        // These capabilities already exist in the application.
-        // They are surfaced here so users can actually discover
-        // and reach them without changing the core navigation.
+        // Home answers one question:
+        // "What do I want to do with my room?"
+        //
+        // Diagnose remains the primary action.
         // =====================================================
 
         Text(
-            text = "Explore RoomAI",
+            text = "What do you want to do?",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(10.dp))
 
         Text(
-            text = "Choose the tool that matches what you want to do.",
+            text = "Choose a goal. RoomAI will open the right workflow.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(Modifier.height(16.dp))
 
-        Text(
-            text = "Create & improve",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = {
-                    nav.navigate("styles") {
-                        launchSingleTop = true
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Styles")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    nav.navigate("furniture") {
-                        launchSingleTop = true
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Furniture")
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = {
-                    nav.navigate("enhance") {
-                        launchSingleTop = true
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Enhance")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    nav.navigate("products") {
-                        launchSingleTop = true
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Products")
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        Text(
-            text = "Solve & analyze",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
                     nav.navigate("decision_engine") {
                         launchSingleTop = true
                     }
                 },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Decision")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    nav.navigate("diagnose") {
-                        launchSingleTop = true
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Diagnose")
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        Text(
-            text = "Advanced workspace",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            shape = RoundedCornerShape(20.dp)
         ) {
-            OutlinedButton(
-                onClick = {
-                    nav.navigate("ai_studio") {
-                        launchSingleTop = true
-                    }
+            ListItem(
+                headlineContent = {
+                    Text(
+                        "Solve a room problem",
+                        fontWeight = FontWeight.Bold
+                    )
                 },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("AI Studio")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    nav.navigate("precision") {
-                        launchSingleTop = true
-                    }
+                supportingContent = {
+                    Text(
+                        "Identify the important problem and decide what is worth fixing."
+                    )
                 },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Precision")
-            }
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Build,
+                        contentDescription = null
+                    )
+                }
+            )
         }
 
         Spacer(Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = {
-                    nav.navigate("room_memory") {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    nav.navigate("create") {
                         launchSingleTop = true
                     }
                 },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Room Memory")
-            }
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        "Create & improve my room",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        "Create a new design or improve the room you already have."
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
 
-            OutlinedButton(
-                onClick = {
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    nav.navigate("designs") {
+                        launchSingleTop = true
+                    }
+                },
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        "My designs",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        "Open your previous room designs and continue working."
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.PhotoLibrary,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
                     nav.navigate("professional") {
                         launchSingleTop = true
                     }
                 },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Professional")
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        OutlinedButton(
-            onClick = {
-                nav.navigate("growth") {
-                    launchSingleTop = true
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(20.dp)
         ) {
-            Text("Growth & next steps")
+            ListItem(
+                headlineContent = {
+                    Text(
+                        "Professional",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        "Use deeper workflows for professional interior decisions."
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Work,
+                        contentDescription = null
+                    )
+                }
+            )
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "More tools are available inside each workflow.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Spacer(Modifier.height(16.dp))
-    }
 }
-
 @Composable
 fun AuthScreen(
     dark: Boolean,
@@ -4978,21 +4936,21 @@ fun Menu(
 
         item {
             Text(
-                "RoomAI Control Center",
-                style = MaterialTheme.typography.headlineMedium,
+                "Me",
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold
             )
 
             Spacer(Modifier.height(4.dp))
 
             Text(
-                "Manage your account, usage, workspace and advanced RoomAI tools from one place.",
+                "Your account, usage, designs and help.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         // =====================================================
-        // ACCOUNT + USAGE
+        // ACCOUNT
         // =====================================================
 
         item {
@@ -5004,7 +4962,7 @@ fun Menu(
                     modifier = Modifier.padding(18.dp)
                 ) {
                     Text(
-                        "Account & plan",
+                        "Account",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -5025,49 +4983,8 @@ fun Menu(
                         if (loggedIn)
                             "Your account is connected."
                         else
-                            "Guest mode • login to keep your account and designs connected.",
+                            "Guest mode. Log in to keep your account connected.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        AssistChip(
-                            onClick = {},
-                            label = {
-                                Text(
-                                    if (usageLoading)
-                                        "Loading plan..."
-                                    else
-                                        usage.plan.uppercase()
-                                )
-                            }
-                        )
-
-                        AssistChip(
-                            onClick = {},
-                            label = {
-                                Text(
-                                    if (usageLoading)
-                                        "Usage loading..."
-                                    else
-                                        "${usage.remaining} generations left"
-                                )
-                            }
-                        )
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        if (usageLoading)
-                            "Checking your current usage..."
-                        else
-                            "${usage.used} / ${usage.limit} generations used this month",
-                        style = MaterialTheme.typography.bodyMedium
                     )
 
                     Spacer(Modifier.height(14.dp))
@@ -5100,289 +5017,116 @@ fun Menu(
         }
 
         // =====================================================
-        // MAIN WORKSPACE
+        // USAGE
+        // =====================================================
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "Usage",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            if (usageLoading)
+                                "Checking your current usage..."
+                            else
+                                "${usage.used} / ${usage.limit} generations used this month • ${usage.remaining} remaining"
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.DataUsage,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // MY DESIGNS
+        // =====================================================
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        go("designs")
+                    },
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "My designs",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "View and continue your room designs."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // HELP
+        // =====================================================
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        go("growth")
+                    },
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            "Help & next steps",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "Get guidance on what to do next with your room."
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.HelpOutline,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+
+        // =====================================================
+        // SETTINGS
         // =====================================================
 
         item {
             Text(
-                "Workspace",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { go("create") }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Create")
-                }
-
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { go("designs") }
-                ) {
-                    Icon(
-                        Icons.Default.PhotoLibrary,
-                        contentDescription = null
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("Designs")
-                }
-            }
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { go("diagnose") }
-                ) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("Diagnose")
-                }
-
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { go("decision_engine") }
-                ) {
-                    Icon(
-                        Icons.Default.Tune,
-                        contentDescription = null
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("Decide")
-                }
-            }
-        }
-
-        // =====================================================
-        // ADVANCED TOOLS
-        // =====================================================
-
-        item {
-            Text(
-                "Advanced tools",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { go("ai_studio") }
-            ) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            "AI Studio",
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            "Work with directed redesigns, budget controls, products and advanced generation."
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            Icons.Default.AutoAwesome,
-                            contentDescription = null
-                        )
-                    }
-                )
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { go("precision") }
-            ) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            "Precision",
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            "Control AI changes more precisely and verify generated results."
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            Icons.Default.Tune,
-                            contentDescription = null
-                        )
-                    }
-                )
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { go("room_memory") }
-            ) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            "Room Memory",
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            "Keep room context available for more consistent recommendations."
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            Icons.Default.History,
-                            contentDescription = null
-                        )
-                    }
-                )
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { go("professional") }
-            ) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            "Professional",
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            "Professional workspace for deeper interior decisions and workflows."
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            Icons.Default.Work,
-                            contentDescription = null
-                        )
-                    }
-                )
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { go("growth") }
-            ) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            "Growth & next steps",
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            "Continue improving the room and discover the next useful action."
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            Icons.Default.TrendingUp,
-                            contentDescription = null
-                        )
-                    }
-                )
-            }
-        }
-
-        // =====================================================
-        // QUICK TOOLS
-        // =====================================================
-
-        item {
-            Text(
-                "Quick tools",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { go("styles") }
-                ) {
-                    Text("Styles")
-                }
-
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { go("enhance") }
-                ) {
-                    Text("Enhance")
-                }
-            }
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { go("furniture") }
-                ) {
-                    Text("Furniture")
-                }
-
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { go("products") }
-                ) {
-                    Text("Products")
-                }
-            }
-        }
-
-        // =====================================================
-        // APPEARANCE
-        // =====================================================
-
-        item {
-            Text(
-                "Preferences",
+                "Settings",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -5390,7 +5134,8 @@ fun Menu(
 
         item {
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
             ) {
                 ListItem(
                     headlineContent = {
@@ -5426,18 +5171,19 @@ fun Menu(
 
         item {
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
             ) {
                 ListItem(
                     headlineContent = {
                         Text(
-                            "RoomAI",
+                            "About RoomAI",
                             fontWeight = FontWeight.Bold
                         )
                     },
                     supportingContent = {
                         Text(
-                            "AI interior design focused on solving the room problem before spending money."
+                            "Solve the room problem before spending money."
                         )
                     },
                     leadingContent = {
