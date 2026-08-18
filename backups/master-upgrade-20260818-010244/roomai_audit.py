@@ -12,7 +12,6 @@ required = [
     "app/src/main/java/com/roomai/app/RoomAIDecisionEngine.kt",
     "app/src/main/java/com/roomai/app/RoomAISolutionBuilder.kt",
     "app/src/main/java/com/roomai/app/RoomAICoreContracts.kt",
-    "app/src/main/java/com/roomai/app/RoomAIRoleContracts.kt",
     "backend.py",
     "diagnostic_engine.py",
 ]
@@ -112,29 +111,3 @@ print("Diagnosis contracts: OK")
 print("Solution pipeline: OK")
 print("Legacy Home removal: OK")
 print("Secret scan: OK")
-
-
-# ============================================================
-# Commercial UX / architecture invariants
-# ============================================================
-
-if "account_email" not in main:
-    errors.append("ACCOUNT IDENTITY: account_email persistence missing")
-
-if "ROOMAI_PLAN_KEY" not in main:
-    errors.append("PLAN STATE: server plan persistence missing")
-
-if "Professional workspace" not in main:
-    errors.append("PRO WORKSPACE: Home entry missing")
-
-# Never commit obvious API credentials.
-for token in [
-    "AIza",
-    "sk-",
-]:
-    if token in backend:
-        errors.append(f"POSSIBLE SECRET TOKEN FOUND: {token}")
-
-# Production backend must protect oversized uploads.
-if "MAX_CONTENT_LENGTH" not in backend:
-    errors.append("BACKEND SAFETY: MAX_CONTENT_LENGTH missing")

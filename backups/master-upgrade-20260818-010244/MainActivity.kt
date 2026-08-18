@@ -285,14 +285,6 @@ private suspend fun roomAiLogout(context: Context) =
             // Local logout must still succeed if the network is unavailable.
         } finally {
             clearRoomAiToken(context)
-
-            context.getSharedPreferences(
-                ROOMAI_PLAN_PREFS,
-                Context.MODE_PRIVATE
-            ).edit()
-                .remove("account_email")
-                .putString(ROOMAI_PLAN_KEY, "free")
-                .apply()
         }
     }
 
@@ -390,11 +382,7 @@ private fun roomAiPlan(context: Context): String {
     ).getString(
         ROOMAI_PLAN_KEY,
         "free"
-    )?.lowercase()
-        ?.let {
-            if (it == "pro") "pro" else "free"
-        }
-        ?: "free"
+    ) ?: "free"
 }
 
 data class RoomAIUsage(
@@ -457,17 +445,6 @@ fun RoomAIApp(
 
         try {
             usage = roomAiUsage(context)
-
-            context.getSharedPreferences(
-                ROOMAI_PLAN_PREFS,
-                Context.MODE_PRIVATE
-            ).edit()
-                .putString(
-                    ROOMAI_PLAN_KEY,
-                    usage.plan
-                )
-                .apply()
-
         } catch (e: Exception) {
             if (e.message == "SESSION_EXPIRED") {
                 clearRoomAiToken(context)
@@ -991,62 +968,6 @@ fun RoomAIHomeRedesigned(
         // SECONDARY TOOLS
         // =========================================================
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    nav.navigate("professional") {
-                        launchSingleTop = true
-                    }
-                },
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(
-                containerColor =
-                    MaterialTheme.colorScheme.secondaryContainer
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(18.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.secondary
-                ) {
-                    Icon(
-                        Icons.Default.WorkspacePremium,
-                        contentDescription = null,
-                        modifier = Modifier.padding(11.dp)
-                    )
-                }
-
-                Spacer(Modifier.width(12.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        "Professional workspace",
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        "For designers, craftsmen and furniture sellers.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
-                Icon(
-                    Icons.Default.ArrowForward,
-                    contentDescription = null
-                )
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
         Text(
             text = "Useful tools",
             style = MaterialTheme.typography.titleLarge,
@@ -1513,20 +1434,6 @@ fun AuthScreen(
                                         context,
                                         newToken
                                     )
-
-                                    context.getSharedPreferences(
-                                        ROOMAI_PLAN_PREFS,
-                                        Context.MODE_PRIVATE
-                                    ).edit()
-                                        .putString(
-                                            "account_email",
-                                            email.trim().lowercase()
-                                        )
-                                        .putString(
-                                            ROOMAI_PLAN_KEY,
-                                            result.optString("plan", "free")
-                                        )
-                                        .apply()
 
                                     onAuthenticated(newToken)
 
@@ -5418,42 +5325,18 @@ fun Menu(
 
                     Spacer(Modifier.height(14.dp))
 
-                    val loggedIn =
-                        roomAiToken(context).isNotBlank()
-
                     OutlinedButton(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            if (loggedIn) {
-                                onLogout()
-                            } else {
-                                // Main navigation will expose authentication
-                                // through the account flow without forcing
-                                // authentication on app launch.
-                                val intent = Intent(
-                                    context,
-                                    MainActivity::class.java
-                                )
-                                context.startActivity(intent)
-                            }
-                        }
+                        onClick = onLogout
                     ) {
                         Icon(
-                            if (loggedIn)
-                                Icons.Default.Logout
-                            else
-                                Icons.Default.Login,
+                            Icons.Default.Logout,
                             contentDescription = null
                         )
 
                         Spacer(Modifier.width(8.dp))
 
-                        Text(
-                            if (loggedIn)
-                                "Log out"
-                            else
-                                "Sign in / Create account"
-                        )
+                        Text("Log out")
                     }
                 }
             }

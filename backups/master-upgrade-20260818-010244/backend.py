@@ -15,29 +15,12 @@ from diagnostic_engine import build_diagnostic_prompt, normalize_diagnosis
 
 app = Flask(__name__)
 
-# Production safety: reject oversized uploads before they consume
-# Gemini/MagicHour resources.
-app.config["MAX_CONTENT_LENGTH"] = int(
-    os.environ.get(
-        "ROOMAI_MAX_UPLOAD_BYTES",
-        str(15 * 1024 * 1024)
-    )
-)
-
-
 API = "https://api.magichour.ai"
 KEY = os.environ.get("MAGIC_HOUR_API_KEY")
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_KEY_31 = os.environ.get("GEMINI_API_KEY_31")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 GEMINI_MODEL_31 = os.environ.get("GEMINI_MODEL_31", "gemini-3.1-flash-lite")
-
-ROOMAI_RUNTIME_CONFIG = {
-    "max_upload_bytes": app.config["MAX_CONTENT_LENGTH"],
-    "has_magic_hour": bool(KEY),
-    "has_gemini": bool(GEMINI_KEY),
-}
-
 
 # ============================================================
 # RoomAI Cost Control / Free-Pro foundation
