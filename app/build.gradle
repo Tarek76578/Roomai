@@ -16,7 +16,9 @@ android {
         versionName '2.0'
 
         manifestPlaceholders = [
-            roomAiAdmobAppId: roomAiAdmobAppId
+            roomAiAdmobAppId:
+                project.findProperty("ROOMAI_ADMOB_APP_ID")
+                    ?: "ca-app-pub-3940256099942544~3347511713"
         ]
     }
 
@@ -25,20 +27,12 @@ android {
         buildConfig true
     }
 
-    def roomAiAdmobAppId =
-        project.findProperty("ROOMAI_ADMOB_APP_ID")
-            ?: "ca-app-pub-3940256099942544~3347511713"
-
-    def roomAiInterstitialAdId =
-        project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")
-            ?: "ca-app-pub-3940256099942544/1033173712"
-
     buildTypes {
         debug {
             buildConfigField(
                 "String",
                 "ROOMAI_INTERSTITIAL_AD_ID",
-                "\"${roomAiInterstitialAdId}\""
+                "\"${project.findProperty("ROOMAI_INTERSTITIAL_AD_ID") ?: "ca-app-pub-3940256099942544/1033173712"}\""
             )
         }
 
@@ -53,7 +47,7 @@ android {
             buildConfigField(
                 "String",
                 "ROOMAI_INTERSTITIAL_AD_ID",
-                "\"${roomAiInterstitialAdId}\""
+                "\"${project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")}\""
             )
         }
     }
