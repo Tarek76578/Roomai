@@ -1741,35 +1741,35 @@ Rules:
 
             cleaned = "\n".join(lines).strip()
 
-        try:
-            return json.loads(cleaned)
+        # Robust Gemini JSON extraction.
+        # Accept clean JSON, fenced JSON, or JSON surrounded by text.
+        decoder = json.JSONDecoder()
 
-        except json.JSONDecodeError:
-            decoder = json.JSONDecoder()
+        candidates = [cleaned]
 
-            start = cleaned.find("{")
+        # Also try every JSON-object boundary so a leading sentence,
+        # markdown, or trailing response cannot break verification.
+        positions = [
+            i for i, ch in enumerate(cleaned)
+            if ch == "{"
+        ]
 
-            if start < 0:
-                raise RuntimeError(
-                    "Gemini verification returned no JSON object"
-                )
+        for start in positions:
+            candidates.append(cleaned[start:])
 
+        for candidate in candidates:
             try:
-                parsed, _ = decoder.raw_decode(
-                    cleaned[start:]
-                )
-            except json.JSONDecodeError as exc:
-                raise RuntimeError(
-                    "Invalid Gemini verification JSON: %s"
-                    % exc
-                )
+                parsed, _ = decoder.raw_decode(candidate.strip())
 
-            if not isinstance(parsed, dict):
-                raise RuntimeError(
-                    "Gemini verification JSON must be an object"
-                )
+                if isinstance(parsed, dict):
+                    return parsed
 
-            return parsed
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        raise RuntimeError(
+            "Gemini verification returned invalid JSON"
+        )
 
     try:
         return call_model(GEMINI_MODEL, GEMINI_KEY)
