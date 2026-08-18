@@ -1229,22 +1229,6 @@ fun Create() {
         }
 
         item {
-            OutlinedTextField(
-                value = goal,
-                onValueChange = {
-                    goal = it
-                    error = null
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("What matters most to you? (optional)") },
-                placeholder = {
-                    Text("Example: better circulation, more storage, workspace...")
-                },
-                minLines = 2
-            )
-        }
-
-        item {
             Button(
                 enabled = imageUri != null && !loading,
                 onClick = {
