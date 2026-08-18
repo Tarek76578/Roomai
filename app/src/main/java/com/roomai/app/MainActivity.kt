@@ -769,7 +769,7 @@ fun RoomAIHomeRedesigned(
 
                     Spacer(Modifier.width(8.dp))
 
-                    Text("Analyze my room")
+                    Text("Diagnose my room")
                 }
             }
         }
@@ -3919,7 +3919,7 @@ fun Diagnose() {
                     )
 
                     Spacer(Modifier.width(8.dp))
-                    Text("Analyze My Room")
+                    Text("Diagnose my room")
                 }
             }
         }
