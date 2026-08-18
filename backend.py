@@ -13,15 +13,88 @@ import re
 from flask import Flask, jsonify, request
 from diagnostic_engine import build_diagnostic_prompt, normalize_diagnosis
 
+
 app = Flask(__name__)
+
+# ============================================================
+# ROOMAI_HTTP_HARDENING_V1
+#
+# Never allow Flask/Render to expose an HTML error page to the
+# Android client. RoomAI's mobile protocol is JSON.
+# ============================================================
+
+def roomai_error_payload(error, code="SERVER_ERROR"):
+    message = str(error).strip()
+
+    if not message:
+        message = "RoomAI server error"
+
+    # Never leak an entire HTML document into the mobile UI.
+    lowered = message.lower()
+
+    if "<html" in lowered or "<head" in lowered or "<!doctype" in lowered:
+        message = (
+            "RoomAI server returned an unexpected HTML response. "
+            "Please retry."
+        )
+
+    return {
+        "status": "error",
+        "code": code,
+        "error": message
+    }
+
+
+@app.errorhandler(404)
+def roomai_404(_error):
+    return jsonify(
+        roomai_error_payload(
+            "Endpoint not found",
+            "NOT_FOUND"
+        )
+    ), 404
+
+
+@app.errorhandler(405)
+def roomai_405(_error):
+    return jsonify(
+        roomai_error_payload(
+            "HTTP method not allowed",
+            "METHOD_NOT_ALLOWED"
+        )
+    ), 405
+
 
 @app.errorhandler(413)
 def roomai_payload_too_large(_error):
     return jsonify({
-        "error": "Image is too large",
+        "status": "error",
         "code": "PAYLOAD_TOO_LARGE",
+        "error": "Image is too large",
         "max_bytes": app.config.get("MAX_CONTENT_LENGTH")
     }), 413
+
+
+@app.errorhandler(500)
+def roomai_500(_error):
+    return jsonify(
+        roomai_error_payload(
+            "Internal RoomAI server error",
+            "INTERNAL_SERVER_ERROR"
+        )
+    ), 500
+
+
+@app.errorhandler(Exception)
+def roomai_unhandled_exception(error):
+    # Keep API failures JSON even when an unexpected exception
+    # occurs outside an explicitly protected route.
+    return jsonify(
+        roomai_error_payload(
+            error,
+            "UNHANDLED_SERVER_ERROR"
+        )
+    ), 500
 
 
 @app.after_request
@@ -30,7 +103,14 @@ def roomai_security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Cache-Control"] = "no-store"
+
+    # API responses must never be interpreted as HTML by clients.
+    if response.mimetype == "application/json":
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
+
     return response
+
+
 
 
 # Production safety: reject oversized uploads before they consume
@@ -523,26 +603,86 @@ def usage_response():
 
 
 def api_request(url, method="GET", data=None, headers=None):
+    """
+    Strict external HTTP client.
+
+    Magic Hour responses are accepted as bytes, but all HTTP errors
+    are converted into useful RuntimeError messages. HTML bodies are
+    explicitly detected so they can never masquerade as JSON.
+    """
+
     req = urllib.request.Request(
         url,
         data=data,
         headers=headers or {},
         method=method
     )
+
     try:
         with urllib.request.urlopen(req, timeout=90) as r:
-            return r.read()
+            body = r.read()
+            content_type = (
+                r.headers.get("Content-Type", "")
+                or ""
+            ).lower()
+
+            if not body:
+                raise RuntimeError(
+                    "Empty response from external image service"
+                )
+
+            # The image upload endpoint can return non-JSON data,
+            # but every JSON API endpoint must be validated by the
+            # caller. We only reject obvious HTML here.
+            preview = body[:512].decode(
+                "utf-8",
+                errors="replace"
+            ).lstrip().lower()
+
+            if (
+                "text/html" in content_type
+                or preview.startswith("<!doctype")
+                or preview.startswith("<html")
+                or preview.startswith("<head")
+            ):
+                raise RuntimeError(
+                    "External image service returned HTML "
+                    "instead of the expected API response"
+                )
+
+            return body
+
     except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
+        body = e.read().decode(
+            "utf-8",
+            errors="replace"
+        ).strip()
+
+        if (
+            "<html" in body.lower()
+            or "<head" in body.lower()
+            or "<!doctype" in body.lower()
+        ):
+            body = (
+                "External image service returned an HTML error "
+                "page (HTTP %s)"
+                % e.code
+            )
+
         raise RuntimeError(
             "HTTP %s from %s: %s"
-            % (e.code, url.split("?")[0], body)
-        )
-    except urllib.error.URLError as e:
-        raise RuntimeError(
-            "Network error: %s" % e
+            % (
+                e.code,
+                url.split("?")[0],
+                body[:2000]
+            )
         )
 
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            "Network error contacting external image service: %s"
+            % e
+        )
 
 def run_editor(image_path, ext, prompt):
     payload = {
@@ -562,7 +702,32 @@ def run_editor(image_path, ext, prompt):
         }
     )
 
-    item = json.loads(response)["items"][0]
+    try:
+        parsed_upload = json.loads(response)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            "Magic Hour upload API returned invalid JSON: %s"
+            % e
+        )
+
+    if not isinstance(parsed_upload, dict):
+        raise RuntimeError(
+            "Magic Hour upload API returned an invalid response"
+        )
+
+    items = parsed_upload.get("items") or []
+
+    if not items or not isinstance(items[0], dict):
+        raise RuntimeError(
+            "Magic Hour upload API returned no upload item"
+        )
+
+    item = items[0]
+
+    if not item.get("upload_url") or not item.get("file_path"):
+        raise RuntimeError(
+            "Magic Hour upload API returned incomplete upload data"
+        )
 
     with open(image_path, "rb") as f:
         image_data = f.read()
@@ -607,7 +772,20 @@ def run_editor(image_path, ext, prompt):
         }
     )
 
-    project_id = json.loads(response)["id"]
+    try:
+        project_payload = json.loads(response)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            "Magic Hour image editor API returned invalid JSON: %s"
+            % e
+        )
+
+    project_id = project_payload.get("id")
+
+    if not project_id:
+        raise RuntimeError(
+            "Magic Hour image editor API returned no project id"
+        )
 
     status_url = (
         API +
@@ -625,7 +803,19 @@ def run_editor(image_path, ext, prompt):
             }
         )
 
-        result = json.loads(response)
+        try:
+            result = json.loads(response)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(
+                "Magic Hour status API returned invalid JSON: %s"
+                % e
+            )
+
+        if not isinstance(result, dict):
+            raise RuntimeError(
+                "Magic Hour status API returned an invalid response"
+            )
+
         status = result.get("status")
 
         if status == "complete":
@@ -640,7 +830,14 @@ def run_editor(image_path, ext, prompt):
                     "No result image"
                 )
 
-            return downloads[0]["url"]
+            download_url = downloads[0].get("url")
+
+            if not download_url:
+                raise RuntimeError(
+                    "Magic Hour completed without a download URL"
+                )
+
+            return download_url
 
         if status in (
             "error",

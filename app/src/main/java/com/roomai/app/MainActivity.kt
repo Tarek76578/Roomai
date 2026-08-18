@@ -147,6 +147,77 @@ private const val DIAGNOSE_URL =
 private const val AUTH_BASE_URL =
     "https://roomai-wagl.onrender.com"
 
+/*
+ * RoomAI HTTP response hardening.
+ *
+ * The backend protocol is JSON. If Render, a proxy, or an upstream
+ * service accidentally returns HTML, never display raw HTML parsing
+ * errors such as "HTML Head..." to the user.
+ */
+private fun roomAiReadHttpResponse(
+    connection: HttpURLConnection
+): String {
+    val code = connection.responseCode
+
+    val stream =
+        if (code in 200..299)
+            connection.inputStream
+        else
+            connection.errorStream
+
+    val body =
+        stream?.bufferedReader()?.use { it.readText() }
+            ?: ""
+
+    val trimmed = body.trim()
+    val lower = trimmed.lowercase()
+
+    val isHtml =
+        lower.startsWith("<!doctype") ||
+        lower.startsWith("<html") ||
+        lower.startsWith("<head") ||
+        lower.contains("<html") ||
+        lower.contains("<head")
+
+    if (isHtml) {
+        throw Exception(
+            if (code in 500..599) {
+                "RoomAI server is temporarily unavailable. Please try again."
+            } else {
+                "RoomAI received an unexpected server response. Please try again."
+            }
+        )
+    }
+
+    if (trimmed.isBlank()) {
+        throw Exception(
+            "RoomAI server returned an empty response."
+        )
+    }
+
+    return trimmed
+}
+
+private fun roomAiJsonError(
+    response: String,
+    fallback: String
+): String {
+    return try {
+        val json = JSONObject(response)
+
+        json.optString(
+            "error",
+            json.optString(
+                "message",
+                fallback
+            )
+        ).ifBlank { fallback }
+
+    } catch (_: Exception) {
+        fallback
+    }
+}
+
 private const val ROOMAI_TOKEN_KEY = "auth_token"
 
 
@@ -241,15 +312,14 @@ private suspend fun roomAiAuthRequest(
 
     val code = connection.responseCode
 
-    val stream =
-        if (code in 200..299)
-            connection.inputStream
-        else
-            connection.errorStream
-
     val response =
-        stream?.bufferedReader()?.use { it.readText() }
-            ?: """{"error":"Empty server response"}"""
+        try {
+            roomAiReadHttpResponse(connection)
+        } catch (e: Exception) {
+            throw Exception(
+                e.message ?: "RoomAI server response error"
+            )
+        }
 
     if (code !in 200..299) {
         val message = try {
@@ -342,15 +412,8 @@ private suspend fun roomAiUsage(context: Context): RoomAIUsage =
 
         val code = connection.responseCode
 
-        val stream =
-            if (code in 200..299)
-                connection.inputStream
-            else
-                connection.errorStream
-
         val response =
-            stream?.bufferedReader()?.use { it.readText() }
-                ?: throw Exception("Empty usage response")
+            roomAiReadHttpResponse(connection)
 
         if (code == 401) {
             clearRoomAiToken(context)
