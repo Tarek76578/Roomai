@@ -9,7 +9,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -135,12 +137,33 @@ fun RoomAIDecisionEngine() {
     }
 
     var budget by remember {
-        mutableStateOf(150000)
+        mutableStateOf(
+            if (RoomAIProblemFlow.hasConstraint(
+                    RoomAIProblemFlow.CONSTRAINT_BUDGET
+                )
+            ) {
+                50000
+            } else {
+                150000
+            }
+        )
     }
 
     var mode by remember {
-        mutableStateOf("Balanced")
+        mutableStateOf(
+            if (RoomAIProblemFlow.hasConstraint(
+                    RoomAIProblemFlow.CONSTRAINT_BUDGET
+                )
+            ) {
+                "Budget"
+            } else {
+                "Balanced"
+            }
+        )
     }
+
+    val constraintsSummary =
+        RoomAIProblemFlow.constraintsSummary()
 
     val picker =
         rememberLauncherForActivityResult(
@@ -177,7 +200,7 @@ fun RoomAIDecisionEngine() {
             buildRoomAISolutionBrief(
                 diagnosis = it,
                 budgetPlan = plan,
-                selectedGoal = RoomAIProblemFlow.label()
+                selectedGoal = RoomAIProblemFlow.labelWithConstraints()
             )
         }
 
@@ -207,6 +230,25 @@ fun RoomAIDecisionEngine() {
             Text(
                 "Understand the room before spending money."
             )
+
+            if (constraintsSummary.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            "Your priorities: $constraintsSummary"
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Tune,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
         }
 
         item {
