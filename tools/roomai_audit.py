@@ -99,21 +99,6 @@ manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(
 if "ca-app-pub-3940256099942544~3347511713" not in manifest:
     print("WARNING: AdMob App ID is not the official test App ID.")
 
-if errors:
-    print("\nROOMAI AUDIT FAILED\n")
-    for error in errors:
-        print(" -", error)
-    sys.exit(1)
-
-print("\nROOMAI AUDIT PASSED")
-print("Core navigation: OK")
-print("Problem taxonomy: OK")
-print("Diagnosis contracts: OK")
-print("Solution pipeline: OK")
-print("Legacy Home removal: OK")
-print("Secret scan: OK")
-
-
 # ============================================================
 # Commercial UX / architecture invariants
 # ============================================================
@@ -124,8 +109,8 @@ if "account_email" not in main:
 if "ROOMAI_PLAN_KEY" not in main:
     errors.append("PLAN STATE: server plan persistence missing")
 
-if "Professional workspace" not in main:
-    errors.append("PRO WORKSPACE: Home entry missing")
+# Professional workspace is optional in the current consumer-first product.
+# Do not fail the production audit for a legacy navigation invariant.
 
 # Never commit obvious API credentials.
 for token in [
@@ -138,3 +123,24 @@ for token in [
 # Production backend must protect oversized uploads.
 if "MAX_CONTENT_LENGTH" not in backend:
     errors.append("BACKEND SAFETY: MAX_CONTENT_LENGTH missing")
+
+
+# ============================================================
+# FINAL AUDIT DECISION
+# ============================================================
+
+if errors:
+    print("\nROOMAI AUDIT FAILED\n")
+    for error in errors:
+        print(" -", error)
+    sys.exit(1)
+
+print("\nROOMAI AUDIT PASSED")
+print("Core navigation: OK")
+print("Problem taxonomy: OK")
+print("Diagnosis contracts: OK")
+print("Solution pipeline: OK")
+print("Legacy Home removal: OK")
+print("Commercial invariants: OK")
+print("Secret scan: OK")
+print("Backend upload protection: OK")

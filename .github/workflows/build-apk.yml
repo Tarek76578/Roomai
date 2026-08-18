@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - fix/auth-guest-quota-ux-clean
+      - agent/roomai-ux-unified
   workflow_dispatch:
 
 permissions:

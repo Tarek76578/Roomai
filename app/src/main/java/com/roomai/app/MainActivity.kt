@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
@@ -718,6 +719,33 @@ fun RoomAIApp(
     }
 }
 
+
+
+@Composable
+fun BottomItem(
+    nav: NavHostController,
+    route: String,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    NavigationBarItem(
+        selected = false,
+        onClick = {
+            nav.navigate(route) {
+                launchSingleTop = true
+            }
+        },
+        icon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = label
+            )
+        },
+        label = {
+            Text(label)
+        }
+    )
+}
 
 @Composable
 fun RoomAIHomeRedesigned(

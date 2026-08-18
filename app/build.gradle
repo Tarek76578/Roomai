@@ -64,25 +64,30 @@ android {
 
 }
 
-// Production-only AdMob validation.
-// Configuration/evaluation must remain safe for debug and unit tests.
-// The guard executes only when an actual release APK/AAB/package task runs.
+// RoomAI production AdMob validation.
+// Debug and unit-test tasks never require production AdMob secrets.
+// Real IDs are mandatory only when packaging a release APK/AAB.
 afterEvaluate {
     tasks.configureEach { task ->
-        def taskName = task.name.toLowerCase()
+        def n = task.name.toLowerCase()
 
-        if (taskName.contains("release") &&
-            (taskName.contains("assemble") ||
-             taskName.contains("bundle") ||
-             taskName.contains("package"))) {
+        if (n.contains("release") &&
+            (n.contains("assemble") ||
+             n.contains("bundle") ||
+             n.contains("package"))) {
 
             task.doFirst {
-                def appId = project.findProperty("ROOMAI_ADMOB_APP_ID")
+                def appId =
+                    project.findProperty("ROOMAI_ADMOB_APP_ID")
+
                 def interstitialId =
-                    project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")
+                    project.findProperty(
+                        "ROOMAI_INTERSTITIAL_AD_ID"
+                    )
 
                 def testAppId =
                     "ca-app-pub-3940256099942544~3347511713"
+
                 def testInterstitialId =
                     "ca-app-pub-3940256099942544/1033173712"
 
@@ -93,7 +98,7 @@ afterEvaluate {
 
                     throw new GradleException(
                         "RoomAI production release requires real AdMob IDs. " +
-                        "Provide ROOMAI_ADMOB_APP_ID and " +
+                        "Set ROOMAI_ADMOB_APP_ID and " +
                         "ROOMAI_INTERSTITIAL_AD_ID."
                     )
                 }
