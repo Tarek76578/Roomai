@@ -44,3 +44,15 @@ roomai_usage.db
 .roomai-audit-report.txt
 *.backup-before-*
 backups/pre-final-cleanup-*/
+
+# RoomAI local backups and development artifacts
+.roomai-ux-audit/
+.roomai-v5-work/
+.roomai-audit-report.txt
+.roomai-backups/
+.roomai-local-backups/
+backups/
+*.backup*
+*.bak
+__pycache__/
+*.pyc

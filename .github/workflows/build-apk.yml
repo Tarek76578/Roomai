@@ -7,6 +7,7 @@ on:
       - fix/auth-guest-quota-ux-clean
       - agent/roomai-ux-unified
       - agent/roomai-master-pass-20260818
+      - agent/roomai-sourcecode-productization-20260821
   workflow_dispatch:
 
 permissions:
@@ -29,7 +30,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.5.1'
+          gradle-version: '8.13'
 
       - name: Verify project
         run: |
@@ -46,13 +47,25 @@ jobs:
           python3 tools/roomai_audit.py
           python3 -m py_compile backend.py diagnostic_engine.py
 
+      - name: Productization backend configuration audit
+        run: |
+          if grep -RInE 'https://[^"[:space:]]+/(generate|diagnose|verify)' \
+            app/src/main/java backend.py roomai.py diagnostic_engine.py \
+            --exclude='*.backup*' --exclude='*.bak'; then
+            echo "ERROR: hardcoded backend endpoint detected."
+            exit 1
+          fi
+          echo "No hardcoded backend endpoint found."
+
       - name: Kotlin unit tests
         run: |
           gradle testDebugUnitTest --stacktrace --no-daemon
 
       - name: Build Debug APK
         run: |
-          gradle assembleDebug --stacktrace --no-daemon
+          gradle assembleDebug \
+            -PROOMAI_BACKEND_BASE_URL=https://example.com \
+            --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

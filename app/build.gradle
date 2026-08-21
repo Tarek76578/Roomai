@@ -27,6 +27,12 @@ android {
         buildConfig true
     }
 
+    buildConfigField(
+        "String",
+        "ROOMAI_BACKEND_BASE_URL",
+        "\"${project.findProperty("ROOMAI_BACKEND_BASE_URL") ?: "https://example.com"}\""
+    )
+
     buildTypes {
         debug {
             buildConfigField(
@@ -89,6 +95,9 @@ afterEvaluate {
                 def interstitialId =
                     project.findProperty("ROOMAI_INTERSTITIAL_AD_ID")
 
+                def backendBaseUrl =
+                    project.findProperty("ROOMAI_BACKEND_BASE_URL")
+
                 def googleTestAppId =
                     'ca-app-pub-3940256099942544~3347511713'
 
@@ -97,13 +106,17 @@ afterEvaluate {
 
                 if (!appId ||
                     !interstitialId ||
+                    !backendBaseUrl ||
+                    backendBaseUrl.toString().trim().isEmpty() ||
                     appId == googleTestAppId ||
                     interstitialId == googleTestInterstitialId) {
 
                     throw new GradleException(
-                        'RoomAI production release requires real AdMob IDs. ' +
-                        'Set ROOMAI_ADMOB_APP_ID and ' +
-                        'ROOMAI_INTERSTITIAL_AD_ID.'
+                        'RoomAI production release requires real AdMob IDs ' +
+                        'and ROOMAI_BACKEND_BASE_URL. ' +
+                        'Set ROOMAI_ADMOB_APP_ID, ' +
+                        'ROOMAI_INTERSTITIAL_AD_ID and ' +
+                        'ROOMAI_BACKEND_BASE_URL.'
                     )
                 }
             }

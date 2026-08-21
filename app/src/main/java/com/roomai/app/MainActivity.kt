@@ -191,14 +191,21 @@ private object RoomAIAds {
     }
 }
 
-private const val BACKEND_URL =
-    "https://roomai-wagl.onrender.com/generate"
+private val ROOMAI_BACKEND_BASE_URL =
+    BuildConfig.ROOMAI_BACKEND_BASE_URL.trimEnd('/')
 
-private const val DIAGNOSE_URL =
-    "https://roomai-wagl.onrender.com/diagnose"
+private const val BACKEND_PATH = "/generate"
+private const val DIAGNOSE_PATH = "/diagnose"
+private const val AUTH_BASE_PATH = ""
 
-private const val AUTH_BASE_URL =
-    "https://roomai-wagl.onrender.com"
+private val BACKEND_URL: String
+    get() = ROOMAI_BACKEND_BASE_URL + BACKEND_PATH
+
+private val DIAGNOSE_URL: String
+    get() = ROOMAI_BACKEND_BASE_URL + DIAGNOSE_PATH
+
+private val AUTH_BASE_URL: String
+    get() = ROOMAI_BACKEND_BASE_URL + AUTH_BASE_PATH
 
 /*
  * RoomAI HTTP response hardening.

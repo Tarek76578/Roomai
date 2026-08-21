@@ -10,11 +10,14 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
 
-private const val GENERATE_URL =
-    "https://roomai-wagl.onrender.com/generate"
+private val PRECISION_BACKEND_BASE_URL =
+    BuildConfig.ROOMAI_BACKEND_BASE_URL.trimEnd('/')
 
-private const val VERIFY_URL =
-    "https://roomai-wagl.onrender.com/verify"
+private val GENERATE_URL: String
+    get() = PRECISION_BACKEND_BASE_URL + "/generate"
+
+private val VERIFY_URL: String
+    get() = PRECISION_BACKEND_BASE_URL + "/verify"
 
 enum class PrecisionEditType {
     REPLACE,
