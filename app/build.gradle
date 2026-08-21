@@ -20,18 +20,17 @@ android {
                 project.findProperty("ROOMAI_ADMOB_APP_ID")
                     ?: "ca-app-pub-3940256099942544~3347511713"
         ]
+        buildConfigField(
+            "String",
+            "ROOMAI_BACKEND_BASE_URL",
+            "\"${project.findProperty("ROOMAI_BACKEND_BASE_URL") ?: "https://example.com"}\""
+        )
     }
 
     buildFeatures {
         compose true
         buildConfig true
     }
-
-    buildConfigField(
-        "String",
-        "ROOMAI_BACKEND_BASE_URL",
-        "\"${project.findProperty("ROOMAI_BACKEND_BASE_URL") ?: "https://example.com"}\""
-    )
 
     buildTypes {
         debug {
