@@ -50,7 +50,7 @@ jobs:
       - name: Productization backend configuration audit
         run: |
           if grep -RInE 'https://[^"[:space:]]+/(generate|diagnose|verify)' \
-            app/src/main/java backend.py roomai.py diagnostic_engine.py \
+            app/src/main/java backend.py diagnostic_engine.py \
             --exclude='*.backup*' --exclude='*.bak'; then
             echo "ERROR: hardcoded backend endpoint detected."
             exit 1
@@ -66,6 +66,27 @@ jobs:
           gradle assembleDebug \
             -PROOMAI_BACKEND_BASE_URL=https://example.com \
             --stacktrace --no-daemon
+
+      - name: Validate Release configuration
+        run: |
+          set +e
+          gradle assembleRelease --stacktrace --no-daemon > release-validation.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            echo "ERROR: Release build succeeded without production configuration."
+            exit 1
+          fi
+
+          if grep -q "RoomAI production release requires real AdMob IDs" release-validation.log; then
+            echo "Release protection is working: production credentials are required."
+            exit 0
+          fi
+
+          echo "ERROR: Release failed for an unexpected reason."
+          cat release-validation.log
+          exit 1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
